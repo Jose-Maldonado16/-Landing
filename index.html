@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Plataforma de Cuidado de Mascotas: conecta con cuidadores verificados para paseos, guardería y alojamiento. Tranquilidad, seguridad y amor para tu mascota." />
+  <meta name="theme-color" content="#14b8a6" />
+  <meta property="og:title" content="Plataforma de Cuidado de Mascotas 🐾" />
+  <meta property="og:description" content="Encuentra cuidadores verificados para tu mascota." />
+  <meta property="og:type" content="website" />
+
+  <title>Plataforma de Cuidado de Mascotas 🐾</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+
+  <!-- ============ NAVBAR ============ -->
+  <header id="navbar" class="navbar">
+    <nav class="navbar__container">
+      <a href="#inicio" class="navbar__brand">
+        <span class="navbar__brand-icon">🐾</span>
+        <span class="navbar__brand-text">
+          Plataforma de<br class="hidden-mobile" /> Cuidado de Mascotas
+        </span>
+      </a>
+
+      <ul class="navbar__menu">
+        <li><a href="#inicio">Inicio</a></li>
+        <li><a href="#servicios">Servicios</a></li>
+        <li><a href="#beneficios">Beneficios</a></li>
+        <li><a href="#como-funciona">Cómo Funciona</a></li>
+        <li><a href="#contacto">Contacto</a></li>
+      </ul>
+
+      <div class="navbar__actions">
+        <a href="#buscar" class="btn btn--outline btn--sm">Buscar Cuidador</a>
+        <a href="#ser-cuidador" class="btn btn--accent btn--sm">Ser Cuidador</a>
+      </div>
+
+      <button id="menuBtn" class="navbar__toggle" aria-label="Abrir menú" aria-expanded="false">
+        <svg id="iconOpen" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+        <svg id="iconClose" class="hidden" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </nav>
+
+    <div id="mobileMenu" class="mobile-menu hidden">
+      <ul class="mobile-menu__list">
+        <li><a href="#inicio">Inicio</a></li>
+        <li><a href="#servicios">Servicios</a></li>
+        <li><a href="#beneficios">Beneficios</a></li>
+        <li><a href="#como-funciona">Cómo Funciona</a></li>
+        <li><a href="#contacto">Contacto</a></li>
+        <li class="mobile-menu__cta-group">
+          <a href="#buscar" class="btn btn--outline btn--block">Buscar Cuidador</a>
+          <a href="#ser-cuidador" class="btn btn--accent btn--block">Ser Cuidador</a>
+        </li>
+      </ul>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ============ HERO ============ -->
+    <section id="inicio" class="hero">
+      <div class="hero__blob hero__blob--1"></div>
+      <div class="hero__blob hero__blob--2"></div>
+
+      <div class="container hero__grid">
+        <div class="hero__content animate-slide-up">
+          <span class="badge">
+            <span class="badge__dot"></span>
+            Cuidadores verificados cerca de ti
+          </span>
+
+          <h1 class="hero__title">
+            Tranquilidad para ti,
+            <span class="hero__title-accent">amor para tu mascota</span>
+          </h1>
+
+          <p class="hero__subtitle">
+            Encuentra cuidadores confiables y verificados para paseos, guardería
+            o alojamiento. Reserva fácil, paga seguro y sigue cada paseo en
+            tiempo real con GPS.
+          </p>
+
+          <div class="hero__ctas">
+            <a href="#buscar" class="btn btn--primary">🔍 Buscar Cuidador</a>
+            <a href="#ser-cuidador" class="btn btn--accent">🐶 Ser Cuidador</a>
+          </div>
+
+          <ul class="hero__checks">
+            <li><span class="check">✓</span> Perfiles verificados</li>
+            <li><span class="check">✓</span> Pagos seguros</li>
+          </ul>
+        </div>
+
+        <div class="hero__media animate-fade-in">
+          <div class="hero__image-wrapper animate-float">
+            <img
+              src="https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=900&q=80"
+              alt="Persona paseando a un perro feliz"
+              loading="eager"
+            />
+          </div>
+
+          <div class="hero__card hero__card--bottom">
+            <div class="hero__card-icon">📍</div>
+            <div>
+              <p class="hero__card-label">Paseo en curso</p>
+              <p class="hero__card-value">GPS activo · 2.4 km</p>
+            </div>
+          </div>
+
+          <div class="hero__card hero__card--top animate-float">
+            <p class="hero__card-label">Cuidador verificado</p>
+            <p class="hero__card-value">⭐ 4.9 · 128 reseñas</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PROPUESTA DE VALOR ============ -->
+    <section class="section value-prop">
+      <div class="container container--narrow text-center">
+        <span class="badge badge--solid">Nuestra misión</span>
+        <h2 class="section__title">
+          Cuidar de tu mascota no debería ser un motivo de estrés
+        </h2>
+        <p class="section__subtitle">
+          Sabemos que dejar a tu compañero peludo en otras manos genera dudas.
+          Por eso creamos una comunidad donde la <strong>confianza</strong>, la
+          <strong>transparencia</strong> y el <strong>profesionalismo</strong>
+          son la base de cada servicio.
+        </p>
+
+        <div class="value-prop__grid">
+          <article class="value-card">
+            <div class="value-card__icon">🛡️</div>
+            <h3>Cuidado responsable</h3>
+            <p>Normalizamos el apoyo externo como una decisión amorosa y responsable.</p>
+          </article>
+          <article class="value-card">
+            <div class="value-card__icon">🤝</div>
+            <h3>Comunidad confiable</h3>
+            <p>Cada cuidador pasa por un proceso de verificación antes de publicar su perfil.</p>
+          </article>
+          <article class="value-card">
+            <div class="value-card__icon">💚</div>
+            <h3>Bienestar animal</h3>
+            <p>Priorizamos el respeto, el juego y el descanso de cada mascota.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SERVICIOS ============ -->
+    <section id="servicios" class="section section--alt">
+      <div class="container">
+        <header class="section__header">
+          <span class="badge badge--solid">Servicios</span>
+          <h2 class="section__title">Todo lo que tu mascota necesita</h2>
+          <p class="section__subtitle">
+            Servicios pensados para cada necesidad, con la seguridad y el cariño que ellos merecen.
+          </p>
+        </header>
+
+        <div class="services__grid">
+          <article class="service-card">
+            <div class="service-card__media">
+              <img src="https://images.unsplash.com/photo-1601758228041-f3b2795255f1?auto=format&fit=crop&w=800&q=80" alt="Paseo de mascotas" loading="lazy" />
+              <span class="service-card__tag">GPS en vivo</span>
+            </div>
+            <div class="service-card__body">
+              <div class="service-card__icon">🦮</div>
+              <h3>Paseos de Mascotas</h3>
+              <p>Paseos seguros con seguimiento GPS en tiempo real. Sigue cada paso de tu mejor amigo desde tu teléfono.</p>
+              <a href="#buscar" class="link-arrow">Reservar ahora <span>→</span></a>
+            </div>
+          </article>
+
+          <article class="service-card">
+            <div class="service-card__media">
+              <img src="https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=800&q=80" alt="Guardería de día" loading="lazy" />
+              <span class="service-card__tag">Cuidado diurno</span>
+            </div>
+            <div class="service-card__body">
+              <div class="service-card__icon">🏠</div>
+              <h3>Guardería de Día</h3>
+              <p>Atención y compañía durante el día mientras trabajas o te ausentas. Juegos, comidas y mucho cariño.</p>
+              <a href="#buscar" class="link-arrow">Reservar ahora <span>→</span></a>
+            </div>
+          </article>
+
+          <article class="service-card">
+            <div class="service-card__media">
+              <img src="https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&w=800&q=80" alt="Alojamiento" loading="lazy" />
+              <span class="service-card__tag">Estadías flexibles</span>
+            </div>
+            <div class="service-card__body">
+              <div class="service-card__icon">🌙</div>
+              <h3>Alojamiento</h3>
+              <p>Hospedaje seguro y cómodo por días o noches, en hogares amorosos verificados por nuestra comunidad.</p>
+              <a href="#buscar" class="link-arrow">Reservar ahora <span>→</span></a>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ BENEFICIOS ============ -->
+    <section id="beneficios" class="section">
+      <div class="container">
+        <header class="section__header">
+          <span class="badge badge--accent">Confianza y seguridad</span>
+          <h2 class="section__title">Por qué elegirnos</h2>
+          <p class="section__subtitle">
+            Cada detalle está diseñado para darte tranquilidad y cuidar a quien más quieres.
+          </p>
+        </header>
+
+        <div class="features__grid">
+          <article class="feature-card">
+            <div class="feature-card__icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <h3>Perfiles Verificados</h3>
+            <p>Fotos reales, experiencia comprobada, certificaciones y reseñas transparentes de cada cuidador.</p>
+          </article>
+
+          <article class="feature-card">
+            <div class="feature-card__icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+            </div>
+            <h3>Seguimiento GPS</h3>
+            <p>Monitorea en tiempo real el recorrido de cada paseo. Tranquilidad total a un toque de distancia.</p>
+          </article>
+
+          <article class="feature-card">
+            <div class="feature-card__icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+              </svg>
+            </div>
+            <h3>Pagos Seguros en Línea</h3>
+            <p>Reserva y pago protegido con cifrado. Sin sorpresas, sin efectivo, sin complicaciones.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CÓMO FUNCIONA ============ -->
+    <section id="como-funciona" class="section section--alt">
+      <div class="container container--narrow">
+        <header class="section__header">
+          <span class="badge badge--solid">Cómo funciona</span>
+          <h2 class="section__title">Simple, rápido y seguro</h2>
+          <p class="section__subtitle">
+            Tres pasos para empezar. Elige tu rol y descubre lo fácil que es.
+          </p>
+        </header>
+
+        <div class="tabs">
+          <button id="tabOwner" class="tabs__btn tabs__btn--active" data-tab="owner">🐕 Para Dueños</button>
+          <button id="tabSitter" class="tabs__btn" data-tab="sitter">🧑‍🦱 Para Cuidadores</button>
+        </div>
+
+        <div id="stepsContainer" class="steps"></div>
+      </div>
+    </section>
+
+    <!-- ============ TESTIMONIOS ============ -->
+    <section class="section">
+      <div class="container">
+        <header class="section__header">
+          <span class="badge badge--solid">Comunidad</span>
+          <h2 class="section__title">Historias que nos inspiran</h2>
+          <p class="section__subtitle">
+            Dueños y cuidadores que ya confían en nuestra plataforma.
+          </p>
+        </header>
+
+        <div class="testimonials__grid">
+          <figure class="testimonial-card">
+            <div class="testimonial-card__stars">★★★★★</div>
+            <blockquote>"Por fin puedo ir a trabajar tranquila. El seguimiento GPS me da una paz que no tenía con otras opciones."</blockquote>
+            <figcaption>
+              <img src="https://i.pravatar.cc/100?img=47" alt="María González" loading="lazy" />
+              <div>
+                <p class="testimonial-card__name">María González</p>
+                <p class="testimonial-card__role">Dueña de Luna 🐶</p>
+              </div>
+            </figcaption>
+          </figure>
+
+          <figure class="testimonial-card">
+            <div class="testimonial-card__stars">★★★★★</div>
+            <blockquote>"La plataforma me dio visibilidad y clientes fieles. Amo lo que hago y ahora puedo vivir de ello."</blockquote>
+            <figcaption>
+              <img src="https://i.pravatar.cc/100?img=12" alt="Carlos Ramírez" loading="lazy" />
+              <div>
+                <p class="testimonial-card__name">Carlos Ramírez</p>
+                <p class="testimonial-card__role">Cuidador verificado</p>
+              </div>
+            </figcaption>
+          </figure>
+
+          <figure class="testimonial-card">
+            <div class="testimonial-card__stars">★★★★★</div>
+            <blockquote>"La verificación de perfiles y los pagos seguros me convencieron. Rocky siempre vuelve feliz y cansado."</blockquote>
+            <figcaption>
+              <img src="https://i.pravatar.cc/100?img=32" alt="Ana Torres" loading="lazy" />
+              <div>
+                <p class="testimonial-card__name">Ana Torres</p>
+                <p class="testimonial-card__role">Dueña de Rocky 🐕</p>
+              </div>
+            </figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CTA FINAL ============ -->
+    <section id="contacto" class="cta-banner">
+      <div class="container text-center">
+        <h2 class="cta-banner__title">
+          Únete a la comunidad de cuidado de mascotas más confiable 🐾
+        </h2>
+        <p class="cta-banner__subtitle">
+          Ya sea que busques un cuidador o quieras ofrecer tus servicios,
+          aquí hay un lugar para ti.
+        </p>
+        <div class="cta-banner__actions">
+          <a id="buscar" href="#inicio" class="btn btn--white">🔍 Buscar Cuidador</a>
+          <a id="ser-cuidador" href="#inicio" class="btn btn--ghost-white">🐶 Ser Cuidador</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="footer">
+    <div class="container footer__grid">
+      <div class="footer__brand">
+        <div class="footer__brand-title">
+          <span>🐾</span>
+          <span>Plataforma de Cuidado de Mascotas</span>
+        </div>
+        <p class="footer__brand-text">
+          Conectamos dueños de mascotas con cuidadores confiables y verificados,
+          ofreciendo tranquilidad, seguridad y un servicio accesible de apoyo animal.
+        </p>
+      </div>
+
+      <div class="footer__col">
+        <h4>Navegación</h4>
+        <ul>
+          <li><a href="#inicio">Inicio</a></li>
+          <li><a href="#servicios">Servicios</a></li>
+          <li><a href="#beneficios">Beneficios</a></li>
+          <li><a href="#como-funciona">Cómo Funciona</a></li>
+          <li><a href="#contacto">Contacto</a></li>
+        </ul>
+      </div>
+
+      <div class="footer__col">
+        <h4>Síguenos</h4>
+        <div class="footer__social">
+          <a href="#" aria-label="Facebook" class="social-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M22 12a10 10 0 10-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.7l-.4 2.9h-2.3v7A10 10 0 0022 12z"/></svg>
+          </a>
+          <a href="#" aria-label="Instagram" class="social-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.2c3.2 0 3.6 0 4.9.1 1.2.1 1.8.3 2.2.4.6.2 1 .5 1.4.9.4.4.7.8.9 1.4.2.4.4 1 .4 2.2.1 1.3.1 1.7.1 4.9s0 3.6-.1 4.9c-.1 1.2-.3 1.8-.4 2.2-.2.6-.5 1-.9 1.4-.4.4-.8.7-1.4.9-.4.2-1 .4-2.2.4-1.3.1-1.7.1-4.9.1s-3.6 0-4.9-.1c-1.2-.1-1.8-.3-2.2-.4-.6-.2-1-.5-1.4-.9-.4-.4-.7-.8-.9-1.4-.2-.4-.4-1-.4-2.2C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.9c.1-1.2.3-1.8.4-2.2.2-.6.5-1 .9-1.4.4-.4.8-.7 1.4-.9.4-.2 1-.4 2.2-.4C8.4 2.2 8.8 2.2 12 2.2zm0 4.8a5 5 0 100 10 5 5 0 000-10zm0 8.2a3.2 3.2 0 110-6.4 3.2 3.2 0 010 6.4zm6.4-8.4a1.2 1.2 0 11-2.4 0 1.2 1.2 0 012.4 0z"/></svg>
+          </a>
+          <a href="#" aria-label="Twitter" class="social-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M22 5.9c-.7.3-1.5.5-2.3.6.8-.5 1.5-1.3 1.8-2.3-.8.5-1.7.8-2.6 1a4.1 4.1 0 00-7 3.7A11.6 11.6 0 013.5 4.6a4.1 4.1 0 001.3 5.5c-.7 0-1.3-.2-1.9-.5v.1c0 2 1.4 3.6 3.3 4a4.1 4.1 0 01-1.8.1 4.1 4.1 0 003.8 2.9A8.2 8.2 0 012 18.4a11.6 11.6 0 006.3 1.8c7.5 0 11.6-6.2 11.6-11.6v-.5c.8-.6 1.5-1.3 2.1-2.2z"/></svg>
+          </a>
+        </div>
+        <ul class="footer__legal">
+          <li><a href="#">Términos de Servicio</a></li>
+          <li><a href="#">Aviso de Privacidad</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer__bottom">
+      <p>© <span id="year"></span> Plataforma de Cuidado de Mascotas. Hecho con 💚 para las mascotas y sus familias.</p>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+  <script src="js/tabs.js"></script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+/* ============================================
+   AJUSTES FINOS RESPONSIVE
+   ============================================ */
+
+/* Móvil pequeño */
+@media (max-width: 480px) {
+  .hero__title { font-size: 1.85rem; }
+  .hero__card--top { top: -0.5rem; right: 0; }
+  .hero__card--bottom { left: 0.5rem; bottom: -1rem; }
+  .hero__card-value { font-size: 0.85rem; }
+  .navbar__brand-text { font-size: 0.85rem; }
+  .tabs__btn { padding: 0.55rem 1rem; font-size: 0.8rem; }
+}
+
+/* Tablets */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .hero { padding-top: 7rem; }
+  .hero__image-wrapper img { height: 420px; }
+}
+
+/* Pantallas grandes */
+@media (min-width: 1440px) {
+  .container { max-width: 1280px; }
+  .hero__title { font-size: 4rem; }
+}
+
+/* Prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  html { scroll-behavior: auto; }
+}
+
+/* Print */
+@media print {
+  .navbar, .cta-banner, .footer__social { display: none; }
+  body { color: #000; background: #fff; }
+}
