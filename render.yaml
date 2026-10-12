@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: pet-care-landing
+    name: dulcemania-landing
     runtime: static
     buildCommand: ""
     staticPublishPath: .

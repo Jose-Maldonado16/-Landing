@@ -1,5 +1,5 @@
 /* ============================================
-   MAIN.JS - Interacciones globales
+   MAIN.JS — DulceMania
    ============================================ */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -9,23 +9,16 @@ document.addEventListener('DOMContentLoaded', () => {
   initSmoothScroll();
 });
 
-/* Navbar cambia al hacer scroll */
 function initNavbarScroll() {
   const navbar = document.getElementById('navbar');
   if (!navbar) return;
-
   const onScroll = () => {
-    if (window.scrollY > 20) {
-      navbar.classList.add('navbar--scrolled');
-    } else {
-      navbar.classList.remove('navbar--scrolled');
-    }
+    navbar.classList.toggle('navbar--scrolled', window.scrollY > 20);
   };
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
 }
 
-/* Menú hamburguesa móvil */
 function initMobileMenu() {
   const btn = document.getElementById('menuBtn');
   const menu = document.getElementById('mobileMenu');
@@ -42,24 +35,19 @@ function initMobileMenu() {
   };
 
   btn.addEventListener('click', () => toggle());
-
-  menu.querySelectorAll('a').forEach((a) => {
-    a.addEventListener('click', () => toggle(false));
-  });
-
-  // Cerrar al hacer resize a desktop
+  menu.querySelectorAll('a').forEach((a) =>
+    a.addEventListener('click', () => toggle(false))
+  );
   window.addEventListener('resize', () => {
     if (window.innerWidth >= 1024) toggle(false);
   });
 }
 
-/* Año dinámico en footer */
 function initYear() {
-  const yearEl = document.getElementById('year');
-  if (yearEl) yearEl.textContent = new Date().getFullYear();
+  const y = document.getElementById('year');
+  if (y) y.textContent = new Date().getFullYear();
 }
 
-/* Smooth scroll con offset para navbar fija */
 function initSmoothScroll() {
   const navHeight = 72;
   document.querySelectorAll('a[href^="#"]').forEach((link) => {
