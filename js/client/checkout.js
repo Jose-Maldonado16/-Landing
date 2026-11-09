@@ -1,14 +1,12 @@
 /* ============================================
    CHECKOUT.JS — Crear pedido en Supabase
    ============================================ */
-import { guardPage, supabase } from '../supabaseClient.js';
-
 let currentUser = null;
 let cart = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
   // 1. Proteger página
-  const profile = await guardPage(['client']);
+  const profile = await window.guardPage(['client']);
   if (!profile) return;
   currentUser = profile;
 
@@ -17,7 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   if (cart.length === 0) {
     alert('Tu carrito está vacío. Redirigiendo al menú.');
-    window.location.href = '/client/dashboard.html';
+    window.location.replace('/client/dashboard.html');
     return;
   }
 
@@ -114,7 +112,7 @@ async function handleSubmit(e) {
 
   try {
     // 4. Insertar en 'orders'
-    const { data: orderData, error: orderError } = await supabase
+    const { data: orderData, error: orderError } = await window.supabase
       .from('orders')
       .insert({
         user_id: currentUser.id,
@@ -140,7 +138,7 @@ async function handleSubmit(e) {
       custom_notes: orderNotes || null,
     }));
 
-    const { error: itemsError } = await supabase
+    const { error: itemsError } = await window.supabase
       .from('order_items')
       .insert(orderItems);
 
@@ -150,7 +148,7 @@ async function handleSubmit(e) {
     localStorage.removeItem('dulcemania_cart');
 
     // 7. Éxito: redirigir a confirmación
-    window.location.href = `/client/order-success.html?id=${orderData.id}`;
+    window.location.replace(`/client/order-success.html?id=${orderData.id}`);
 
   } catch (err) {
     console.error('Error al crear pedido:', err);

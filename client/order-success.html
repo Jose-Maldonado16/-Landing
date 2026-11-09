@@ -57,13 +57,20 @@
     </div>
   </div>
 
-  <script type="module">
-    import { supabase, guardPage } from '../js/supabaseClient.js';
+  <!-- 1. Cargamos Supabase desde CDN global -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <!-- 2. Cargamos el cliente global -->
+  <script src="/js/supabaseClient.js"></script>
 
-    (async () => {
-      const profile = await guardPage(['client']);
+  <!-- 3. Lógica de la página SIN type="module" -->
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Proteger página
+      const profile = await window.guardPage(['client']);
       if (!profile) return;
 
+      // Obtener ID del pedido de la URL
       const params = new URLSearchParams(window.location.search);
       const orderId = params.get('id');
       
@@ -75,7 +82,7 @@
       } else {
         document.getElementById('orderInfo').textContent = 'Pedido registrado exitosamente';
       }
-    })();
+    });
   </script>
 </body>
 </html>
