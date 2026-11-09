@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel Admin — DulceMania 🍦</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Pacifico&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="stylesheet" href="/css/dashboard.css" />
+  <style>
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    
+    /* Estilos específicos del Admin */
+    .admin-tabs { display: flex; gap: 0.5rem; margin-bottom: 2rem; border-bottom: 1px solid var(--slate-200); }
+    .admin-tab { padding: 0.75rem 1.5rem; border: none; background: none; font-weight: 600; color: var(--slate-500); cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; }
+    .admin-tab:hover { color: var(--brand-600); }
+    .admin-tab.active { color: var(--brand-600); border-bottom-color: var(--brand-500); }
+    .tab-content { display: none; animation: fadeIn 0.3s ease; }
+    .tab-content.active { display: block; }
+    
+    /* Métricas */
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+    .metric-card { background: #fff; padding: 1.5rem; border-radius: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid var(--slate-100); }
+    .metric-label { font-size: 0.85rem; color: var(--slate-500); font-weight: 600; text-transform: uppercase; }
+    .metric-value { font-size: 2rem; font-weight: 800; color: var(--slate-900); margin-top: 0.5rem; }
+    
+    /* Tabla */
+    .data-table-wrapper { background: #fff; border-radius: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th, .data-table td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--slate-100); }
+    .data-table th { background: var(--slate-50); font-size: 0.85rem; font-weight: 700; color: var(--slate-600); text-transform: uppercase; }
+    .data-table td { font-size: 0.95rem; color: var(--slate-800); }
+    .data-table img { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; }
+    
+    /* Botones de acción */
+    .action-btn { padding: 0.4rem 0.8rem; border-radius: 6px; border: none; font-weight: 600; font-size: 0.8rem; cursor: pointer; transition: 0.2s; }
+    .btn-edit { background: #dbeafe; color: #1e40af; }
+    .btn-edit:hover { background: #bfdbfe; }
+    .btn-delete { background: #fee2e2; color: #991b1b; }
+    .btn-delete:hover { background: #fecaca; }
+    
+    /* Form Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 1rem; }
+    .modal-overlay.active { display: flex; }
+    .modal-box { background: #fff; border-radius: 1rem; padding: 2rem; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+    .modal-box h2 { margin-bottom: 1.5rem; font-size: 1.25rem; font-weight: 800; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--slate-700); margin-bottom: 0.35rem; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.65rem; border: 1px solid var(--slate-200); border-radius: 0.5rem; font-family: inherit; }
+  </style>
+</head>
+<body class="dashboard-body">
+
+  <!-- PANTALLA DE CARGA -->
+  <div id="appLoader" style="position:fixed;inset:0;background:#fff;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;">
+    <div style="font-size:3rem;animation:spin 1s linear infinite;">🍦</div>
+    <p style="font-weight:600;color:#64748b;">Cargando Panel Admin...</p>
+  </div>
+
+  <!-- CONTENIDO -->
+  <div id="appWrapper" style="display:none;">
+    
+    <header class="dash-navbar">
+      <div class="container dash-navbar__container">
+        <a href="/index.html" class="dash-brand">
+          <span class="dash-brand-icon">🍦</span>
+          <span class="dash-brand-text">Dulce<span class="dash-brand-accent">Mania</span></span>
+          <span style="font-size:0.75rem;background:var(--brand-500);color:#fff;padding:2px 8px;border-radius:99px;margin-left:8px;">ADMIN</span>
+        </a>
+        <div class="dash-user">
+          <span id="userName" class="dash-user-name">Admin</span>
+          <button id="btnLogout" class="btn btn--outline btn--sm">Salir</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="container dash-main">
+      <section class="dash-header">
+        <h1 class="dash-title">Panel de Administración</h1>
+        <p class="dash-subtitle">Gestiona tu negocio, productos y pedidos.</p>
+      </section>
+
+      <!-- TABS -->
+      <div class="admin-tabs">
+        <button class="admin-tab active" data-tab="dashboard">📊 Dashboard</button>
+        <button class="admin-tab" data-tab="products">🍦 Productos</button>
+        <button class="admin-tab" data-tab="orders">📦 Pedidos</button>
+      </div>
+
+      <!-- TAB: DASHBOARD -->
+      <div id="tab-dashboard" class="tab-content active">
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-label">Ventas Totales</div>
+            <div class="metric-value" id="metricSales">Bs. 0</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Pedidos Hoy</div>
+            <div class="metric-value" id="metricOrders">0</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Productos Activos</div>
+            <div class="metric-value" id="metricProducts">0</div>
+          </div>
+        </div>
+        <h3 style="font-weight:700;margin-bottom:1rem;">Últimos 5 Pedidos</h3>
+        <div class="data-table-wrapper">
+          <table class="data-table">
+            <thead><tr><th>ID</th><th>Cliente</th><th>Total</th><th>Estado</th><th>Fecha</th></tr></thead>
+            <tbody id="recentOrdersTable"><tr><td colspan="5" style="text-align:center;padding:2rem;">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB: PRODUCTOS -->
+      <div id="tab-products" class="tab-content">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+          <h3 style="font-weight:700;">Catálogo de Productos</h3>
+          <button id="btnAddProduct" class="btn btn--primary">+ Nuevo Producto</button>
+        </div>
+        <div class="data-table-wrapper">
+          <table class="data-table">
+            <thead><tr><th>Img</th><th>Nombre</th><th>Categoría</th><th>Precio</th><th>Stock</th><th>Acciones</th></tr></thead>
+            <tbody id="productsTable"><tr><td colspan="6" style="text-align:center;padding:2rem;">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB: PEDIDOS -->
+      <div id="tab-orders" class="tab-content">
+        <h3 style="font-weight:700;margin-bottom:1.5rem;">Todos los Pedidos</h3>
+        <div class="data-table-wrapper">
+          <table class="data-table">
+            <thead><tr><th>ID</th><th>Cliente</th><th>Entrega</th><th>Pago</th><th>Total</th><th>Estado</th><th>Fecha</th></tr></thead>
+            <tbody id="allOrdersTable"><tr><td colspan="7" style="text-align:center;padding:2rem;">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MODAL PARA PRODUCTOS -->
+  <div id="productModal" class="modal-overlay">
+    <div class="modal-box">
+      <h2 id="modalTitle">Nuevo Producto</h2>
+      <form id="productForm">
+        <input type="hidden" id="prodId" />
+        <div class="form-group"><label>Nombre *</label><input type="text" id="prodName" required /></div>
+        <div class="form-group"><label>Descripción</label><textarea id="prodDesc" rows="2"></textarea></div>
+        <div class="form-group"><label>Precio (Bs) *</label><input type="number" id="prodPrice" step="0.01" required /></div>
+        <div class="form-group">
+          <label>Categoría *</label>
+          <select id="prodCategory" required>
+            <option value="helados">Helados</option>
+            <option value="pasteles">Pasteles</option>
+            <option value="panes">Panes</option>
+            <option value="bebidas">Bebidas</option>
+            <option value="complementos">Complementos</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Stock *</label><input type="number" id="prodStock" required /></div>
+        <div class="form-group"><label>URL Imagen</label><input type="url" id="prodImage" /></div>
+        <div style="display:flex;gap:1rem;margin-top:1.5rem;">
+          <button type="button" id="btnCancelProduct" class="btn btn--outline" style="flex:1;">Cancelar</button>
+          <button type="submit" class="btn btn--primary" style="flex:1;">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabaseClient.js"></script>
+  <script src="/js/admin/admin.js"></script>
+</body>
+</html>
