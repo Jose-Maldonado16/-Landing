@@ -1,90 +1,97 @@
-let cart = JSON.parse(localStorage.getItem('dulcemania_cart')) || [];
+/* ============================================
+   CATALOG.JS — Carga productos de Supabase
+   ============================================ */
+(function() {
+  let allProducts = [];
 
-document.addEventListener('DOMContentLoaded', () => {
-  updateCartUI();
-  
-  window.addEventListener('add-to-cart', (e) => addToCart(e.detail));
+  document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Guard
+    const profile = await window.guardPage(['client', 'admin', 'staff']);
+    if (!profile) return;
 
-  const cartToggle = document.getElementById('cartToggle');
-  const cartClose = document.getElementById('cartClose');
-  const cartSidebar = document.getElementById('cartSidebar');
-  const cartOverlay = document.getElementById('cartOverlay');
+    // 2. Datos usuario
+    const userNameEl = document.getElementById('userName');
+    const greetingNameEl = document.getElementById('greetingName');
+    if (userNameEl) userNameEl.textContent = profile.full_name || 'Cliente';
+    if (greetingNameEl) greetingNameEl.textContent = (profile.full_name || 'Cliente').split(' ')[0];
 
-  const openCart = () => {
-    cartSidebar.classList.add('cart--open');
-    cartOverlay.classList.remove('hidden');
-    setTimeout(() => cartOverlay.classList.add('cart--open'), 10);
-  };
-  const closeCart = () => {
-    cartSidebar.classList.remove('cart--open');
-    cartOverlay.classList.remove('cart--open');
-    setTimeout(() => cartOverlay.classList.add('hidden'), 300);
-  };
+    // 3. Logout
+    document.getElementById('btnLogout')?.addEventListener('click', () => window.logoutUser());
 
-  cartToggle?.addEventListener('click', openCart);
-  cartClose?.addEventListener('click', closeCart);
-  cartOverlay?.addEventListener('click', closeCart);
-
-  document.getElementById('btnCheckout')?.addEventListener('click', () => {
-    if (cart.length === 0) return alert('Tu carrito está vacío.');
-    window.location.href = '/client/checkout.html';
+    // 4. Cargar productos
+    await loadProducts();
+    initFilters();
   });
-});
 
-function saveCart() {
-  localStorage.setItem('dulcemania_cart', JSON.stringify(cart));
-}
+  async function loadProducts() {
+    const grid = document.getElementById('productGrid');
+    if (!grid) return; // Si no estamos en el dashboard, salir
 
-function addToCart(product) {
-  const existing = cart.find(i => i.product_id === product.id);
-  if (existing) existing.quantity += 1;
-  else cart.push({ product_id: product.id, name: product.name, price: product.price, image_url: product.image_url, quantity: 1 });
-  saveCart();
-  updateCartUI();
-}
+    try {
+      const { data, error } = await window.supabase
+        .from('products')
+        .select('*')
+        .order('id');
+      
+      if (error) throw error;
+      
+      allProducts = data || [];
+      
+      if (allProducts.length === 0) {
+        grid.innerHTML = `<p style="text-align:center;grid-column:1/-1;padding:2rem;">No hay productos disponibles.</p>`;
+        return;
+      }
+      
+      renderProducts(allProducts);
+    } catch (error) {
+      console.error('Error cargando productos:', error);
+      grid.innerHTML = `<p style="color:red;text-align:center;grid-column:1/-1;padding:2rem;">Error al cargar productos. Recarga la página.</p>`;
+    }
+  }
 
-function updateCartUI() {
-  const badge = document.getElementById('cartBadge');
-  const itemsContainer = document.getElementById('cartItems');
-  const totalEl = document.getElementById('cartTotal');
-  
-  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-  if (totalItems > 0) { badge.textContent = totalItems; badge.classList.remove('hidden'); } 
-  else { badge.classList.add('hidden'); }
-
-  if (cart.length === 0) {
-    itemsContainer.innerHTML = `<p style="text-align:center;color:#64748b;margin-top:2rem;">Tu carrito está vacío.</p>`;
-  } else {
-    itemsContainer.innerHTML = cart.map(item => `
-      <div class="cart-item">
-        <img src="${item.image_url}" class="cart-item-img">
-        <div class="cart-item-info">
-          <p class="cart-item-title">${item.name}</p>
-          <p class="cart-item-price">Bs. ${item.price}</p>
-          <div class="cart-item-actions">
-            <button class="cart-qty-btn" onclick="window.__changeQty(${item.product_id}, -1)">-</button>
-            <span class="cart-qty">${item.quantity}</span>
-            <button class="cart-qty-btn" onclick="window.__changeQty(${item.product_id}, 1)">+</button>
+  function renderProducts(products) {
+    const grid = document.getElementById('productGrid');
+    
+    grid.innerHTML = products.map(p => `
+      <article class="dash-product-card">
+        <img src="${p.image_url || 'https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?auto=format&fit=crop&w=600&q=80'}" alt="${p.name}" class="dash-product-img" loading="lazy" />
+        <div class="dash-product-body">
+          <h3 class="dash-product-title">${p.name}</h3>
+          <p class="dash-product-desc">${p.description || 'Delicioso producto artesanal.'}</p>
+          <div class="dash-product-footer">
+            <span class="dash-product-price">Bs. ${p.price}</span>
+            <button class="dash-product-btn btn-add-cart" data-id="${p.id}" ${!p.is_available || p.stock <= 0 ? 'disabled' : ''}>
+              ${!p.is_available || p.stock <= 0 ? 'Agotado' : '+ Agregar'}
+            </button>
           </div>
         </div>
-        <button class="cart-item-remove" onclick="window.__removeItem(${item.product_id})">🗑️</button>
-      </div>
+      </article>
     `).join('');
-  }
-  const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  totalEl.textContent = `Bs. ${total.toFixed(2)}`;
-}
 
-window.__changeQty = (id, delta) => {
-  const item = cart.find(i => i.product_id === id);
-  if (!item) return;
-  item.quantity += delta;
-  if (item.quantity <= 0) cart = cart.filter(i => i.product_id !== id);
-  saveCart();
-  updateCartUI();
-};
-window.__removeItem = (id) => {
-  cart = cart.filter(i => i.product_id !== id);
-  saveCart();
-  updateCartUI();
-};
+    document.querySelectorAll('.btn-add-cart').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = parseInt(btn.dataset.id);
+        const product = allProducts.find(p => p.id === id);
+        if (product) {
+          window.dispatchEvent(new CustomEvent('add-to-cart', { detail: product }));
+        }
+      });
+    });
+  }
+
+  function initFilters() {
+    const filters = document.getElementById('categoryFilters');
+    if (!filters) return;
+
+    filters.addEventListener('click', (e) => {
+      if (!e.target.matches('.filter-btn')) return;
+      
+      filters.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('filter-btn--active'));
+      e.target.classList.add('filter-btn--active');
+      
+      const f = e.target.dataset.filter;
+      const filtered = f === 'all' ? allProducts : allProducts.filter(p => p.category === f);
+      renderProducts(filtered);
+    });
+  }
+})();
