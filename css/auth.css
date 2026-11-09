@@ -58,7 +58,6 @@ html { scroll-behavior: smooth; }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Header */
 .auth-header { text-align: center; }
 .auth-brand {
   display: inline-flex;
@@ -81,7 +80,6 @@ html { scroll-behavior: smooth; }
   color: var(--slate-500);
 }
 
-/* Tabs */
 .auth-tabs {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -110,7 +108,6 @@ html { scroll-behavior: smooth; }
   box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
 
-/* Form */
 .auth-form { display: flex; flex-direction: column; gap: 1rem; }
 
 .auth-field { display: flex; flex-direction: column; gap: 0.35rem; }
@@ -151,7 +148,6 @@ html { scroll-behavior: smooth; }
   line-height: 1;
 }
 
-/* Error / Success */
 .auth-error,
 .auth-success {
   font-size: 0.875rem;
@@ -170,7 +166,6 @@ html { scroll-behavior: smooth; }
   border-left: 3px solid #16a34a;
 }
 
-/* Botón */
 .auth-btn {
   margin-top: 0.5rem;
   padding: 0.9rem 1rem;
@@ -210,7 +205,6 @@ html { scroll-behavior: smooth; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Footer */
 .auth-footer {
   margin-top: 2rem;
   text-align: center;
