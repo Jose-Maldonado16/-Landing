@@ -1,5 +1,5 @@
 /* ============================================
-   CHECKOUT — Estilos del flujo de pago
+   CHECKOUT — Estilos (DARK MODE)
    ============================================ */
 .checkout-main {
   padding-top: 2rem;
@@ -23,21 +23,20 @@
 }
 
 .checkout-section {
-  background: #fff;
+  background: var(--card-dark);
   border-radius: 1rem;
   padding: 1.5rem;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.03);
-  border: 1px solid var(--slate-100);
+  border: 1px solid var(--border-dark);
 }
 .checkout-section h2 {
   font-size: 1.1rem;
   font-weight: 700;
-  color: var(--slate-900);
+  color: var(--text-main);
   margin-bottom: 1rem;
 }
 .checkout-hint {
   font-size: 0.85rem;
-  color: var(--slate-500);
+  color: var(--text-muted);
   margin-bottom: 1rem;
   margin-top: -0.5rem;
 }
@@ -48,27 +47,26 @@
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
 }
-.radio-card {
-  cursor: pointer;
-}
+.radio-card { cursor: pointer; }
 .radio-card input { display: none; }
 .radio-content {
-  border: 2px solid var(--slate-200);
+  border: 2px solid var(--border-dark);
   border-radius: 0.75rem;
   padding: 1rem;
   display: flex;
   align-items: center;
   gap: 0.75rem;
   transition: all 0.2s;
+  background: #0b1120;
 }
 .radio-card input:checked + .radio-content {
   border-color: var(--brand-500);
-  background: var(--brand-50);
-  box-shadow: 0 0 0 3px rgba(244,63,94,0.1);
+  background: rgba(244,63,94,0.1);
+  box-shadow: 0 0 0 3px rgba(244,63,94,0.2);
 }
 .radio-icon { font-size: 1.5rem; }
-.radio-content strong { display: block; font-size: 0.95rem; color: var(--slate-900); }
-.radio-content span { font-size: 0.8rem; color: var(--slate-500); }
+.radio-content strong { display: block; font-size: 0.95rem; color: var(--text-main); }
+.radio-content span { font-size: 0.8rem; color: var(--text-muted); }
 
 /* Campos */
 .checkout-row {
@@ -85,27 +83,26 @@
 .checkout-field label {
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--slate-700);
+  color: var(--text-main);
 }
 .checkout-field input,
 .checkout-field textarea {
   width: 100%;
   padding: 0.75rem 1rem;
-  border: 1.5px solid var(--slate-200);
+  border: 1.5px solid var(--border-dark);
   border-radius: 0.5rem;
   font-family: inherit;
   font-size: 1rem;
-  color: var(--slate-900);
-  background: #fff;
+  color: var(--text-main);
+  background: #0b1120;
   transition: border-color 0.2s;
 }
 .checkout-field input:focus,
 .checkout-field textarea:focus {
   outline: none;
   border-color: var(--brand-500);
-  box-shadow: 0 0 0 3px rgba(244,63,94,0.15);
+  box-shadow: 0 0 0 3px rgba(244,63,94,0.25);
 }
-.checkout-field textarea { resize: vertical; }
 
 /* Pagos */
 .payment-grid {
@@ -116,39 +113,39 @@
 .payment-card { cursor: pointer; }
 .payment-card input { display: none; }
 .payment-content {
-  border: 2px solid var(--slate-200);
+  border: 2px solid var(--border-dark);
   border-radius: 0.75rem;
   padding: 1rem;
   text-align: center;
   font-weight: 600;
-  color: var(--slate-700);
+  color: var(--text-muted);
   transition: all 0.2s;
+  background: #0b1120;
 }
 .payment-content span { display: block; font-size: 1.5rem; margin-bottom: 0.25rem; }
 .payment-card input:checked + .payment-content {
   border-color: var(--brand-500);
-  background: var(--brand-50);
-  color: var(--brand-700);
-  box-shadow: 0 0 0 3px rgba(244,63,94,0.1);
+  background: rgba(244,63,94,0.1);
+  color: var(--brand-500);
+  box-shadow: 0 0 0 3px rgba(244,63,94,0.2);
 }
 
 /* Resumen */
 .checkout-summary {
-  background: #fff;
+  background: var(--card-dark);
   border-radius: 1rem;
   padding: 1.5rem;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-  border: 1px solid var(--slate-100);
+  border: 1px solid var(--border-dark);
   position: sticky;
   top: 90px;
 }
 .checkout-summary h2 {
   font-size: 1.1rem;
   font-weight: 700;
-  color: var(--slate-900);
+  color: var(--text-main);
   margin-bottom: 1rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid var(--slate-100);
+  border-bottom: 1px solid var(--border-dark);
 }
 .summary-items {
   display: flex;
@@ -162,13 +159,13 @@
   display: flex;
   justify-content: space-between;
   font-size: 0.9rem;
-  color: var(--slate-600);
+  color: var(--text-muted);
 }
-.summary-item-qty { color: var(--slate-400); font-weight: 600; margin-right: 0.5rem; }
-.summary-item-price { font-weight: 600; color: var(--slate-900); }
+.summary-item-qty { color: var(--brand-500); font-weight: 600; margin-right: 0.5rem; }
+.summary-item-price { font-weight: 600; color: var(--text-main); }
 
 .summary-totals {
-  border-top: 1px solid var(--slate-100);
+  border-top: 1px solid var(--border-dark);
   padding-top: 1rem;
   margin-bottom: 1.5rem;
 }
@@ -176,20 +173,19 @@
   display: flex;
   justify-content: space-between;
   font-size: 0.95rem;
-  color: var(--slate-600);
+  color: var(--text-muted);
   margin-bottom: 0.5rem;
 }
 .summary-row--total {
   font-size: 1.1rem;
-  color: var(--slate-900);
+  color: var(--text-main);
   margin-top: 0.5rem;
   padding-top: 0.5rem;
-  border-top: 1px dashed var(--slate-200);
+  border-top: 1px dashed var(--border-dark);
 }
 .summary-row--total strong {
-  color: var(--brand-600);
+  color: var(--brand-500);
   font-size: 1.4rem;
 }
 
-/* Utilidad */
 .hidden { display: none !important; }
