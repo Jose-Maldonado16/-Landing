@@ -8,7 +8,7 @@ let allProducts = [];
 document.addEventListener('DOMContentLoaded', async () => {
   // 1. Proteger la página (solo clientes)
   const profile = await guardPage(['client', 'admin', 'staff']);
-  if (!profile) return;
+  if (!profile) return; // Si guardPage redirige, detenemos la ejecución aquí.
 
   // 2. Mostrar nombre del usuario
   document.getElementById('userName').textContent = profile.full_name || 'Cliente';
@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 3. Botón de cerrar sesión
   document.getElementById('btnLogout').addEventListener('click', async () => {
     await supabase.auth.signOut();
-    window.location.href = '/login.html';
+    window.location.replace('/login.html');
   });
 
   // 4. Cargar productos
@@ -26,6 +26,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 5. Configurar filtros
   initFilters();
 });
+
+// ... (el resto de tu código de loadProducts y renderProducts se queda igual)
 
 async function loadProducts() {
   const grid = document.getElementById('productGrid');

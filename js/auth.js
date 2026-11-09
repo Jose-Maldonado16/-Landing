@@ -174,8 +174,15 @@ registerForm.addEventListener('submit', async (e) => {
 (async () => {
   const { data: { session } } = await supabase.auth.getSession();
   if (session) {
-    const role = await fetchRole(session.user.id);
-    redirectByRole(role);
+    // Si ya hay sesión, obtenemos el rol y redirigimos inmediatamente
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', session.user.id)
+      .single();
+      
+    const role = profile?.role || 'client';
+    window.location.replace(ROLE_ROUTES[role] || '/index.html');
   }
 })();
 

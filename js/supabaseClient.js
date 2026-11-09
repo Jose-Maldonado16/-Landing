@@ -1,5 +1,5 @@
 /* ============================================
-   CONEXIÓN A SUPABASE
+   CONEXIÓN A SUPABASE (V2 - Anti-bucle)
    ============================================ */
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
@@ -16,13 +16,17 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
 });
 
 /**
- * Devuelve el perfil del usuario autenticado.
- * Si no hay sesión, retorna null.
+ * Obtiene el perfil del usuario con reintentos.
  */
 export async function getCurrentProfile() {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return null;
+  // 1. Obtener sesión
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  
+  if (sessionError || !session) {
+    return null;
+  }
 
+  // 2. Obtener perfil de la tabla 'profiles'
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -30,43 +34,57 @@ export async function getCurrentProfile() {
     .single();
 
   if (error) {
-    console.error('Error obteniendo perfil:', error);
+    console.error('Error obteniendo perfil:', error.message);
+    // Si el error es que no hay fila (PGRST116), el trigger falló al crear el usuario
+    if (error.code === 'PGRST116') {
+      console.warn('Perfil no encontrado. Creando perfil de emergencia...');
+      // Intentar crear el perfil si no existe
+      const { data: newProfile } = await supabase
+        .from('profiles')
+        .upsert({ id: session.user.id, full_name: session.user.email, role: 'client' })
+        .select()
+        .single();
+      return newProfile;
+    }
     return null;
   }
+
   return data;
 }
 
 /**
- * Cierra la sesión y redirige al login.
- */
-export async function logout() {
-  await supabase.auth.signOut();
-  window.location.href = '/login.html';
-}
-
-/**
  * Protege una página: valida sesión y rol.
- * @param {string[]} allowedRoles - Roles permitidos, ej: ['admin']
- * @returns {Promise<object|null>} - Perfil del usuario o null si redirige.
  */
 export async function guardPage(allowedRoles = ['client', 'admin', 'staff']) {
-  const profile = await getCurrentProfile();
+  try {
+    const profile = await getCurrentProfile();
 
-  if (!profile) {
-    window.location.href = '/login.html';
+    if (!profile) {
+      console.log('No hay perfil, redirigiendo a login...');
+      window.location.replace('/login.html'); // Usamos replace para no llenar el historial
+      return null;
+    }
+
+    if (!allowedRoles.includes(profile.role)) {
+      console.log(`Rol ${profile.role} no permitido. Redirigiendo...`);
+      const routes = {
+        client: '/client/dashboard.html',
+        admin: '/admin/dashboard.html',
+        staff: '/staff/dashboard.html',
+      };
+      window.location.replace(routes[profile.role] || '/login.html');
+      return null;
+    }
+
+    return profile;
+  } catch (err) {
+    console.error('Error crítico en guardPage:', err);
+    window.location.replace('/login.html');
     return null;
   }
+}
 
-  if (!allowedRoles.includes(profile.role)) {
-    // Redirige al panel que le corresponde
-    const routes = {
-      client: '/client/dashboard.html',
-      admin: '/admin/dashboard.html',
-      staff: '/staff/dashboard.html',
-    };
-    window.location.href = routes[profile.role] || '/login.html';
-    return null;
-  }
-
-  return profile;
+export async function logout() {
+  await supabase.auth.signOut();
+  window.location.replace('/login.html');
 }
