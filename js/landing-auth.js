@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       .from('profiles')
       .select('role, full_name')
       .eq('id', session.user.id)
-      .single();
+      .maybeSingle();
 
     const role = profile?.role || 'client';
     const roleRoutes = {
@@ -48,6 +48,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('btnLogout')?.addEventListener('click', handleLogout);
     document.getElementById('btnLogoutMobile')?.addEventListener('click', handleLogout);
 
+    // Redirigir los botones de "Pedir Ahora" al panel del usuario
+    const ctaButtons = document.querySelectorAll('#ctaMenuLogin, #ctaBannerLogin, a[href="#menu"].btn--primary');
+    ctaButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.location.href = panelUrl;
+      });
+    });
+
   } else {
     // Usuario NO autenticado
     if (navActions) {
@@ -62,20 +71,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         <a href="/login.html?tab=register" class="btn btn--primary btn--block">Registrarse</a>
       `;
     }
-  }
 
-  // Redirigir los botones de "Pedir Ahora"
-  const ctaButtons = document.querySelectorAll('#ctaMenuLogin, #ctaBannerLogin, a[href="#menu"].btn--primary');
-  ctaButtons.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      if (!session) {
+    // Redirigir los botones de "Pedir Ahora" al login
+    const ctaButtons = document.querySelectorAll('#ctaMenuLogin, #ctaBannerLogin, a[href="#menu"].btn--primary');
+    ctaButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
         window.location.href = '/login.html';
-      } else {
-        // Si ya está logueado, lo mandamos a su panel
-        const { data: { user } } = await window.supabase.auth.getUser(); // fallback
-        window.location.href = '/client/dashboard.html'; 
-      }
+      });
     });
-  });
+  }
 });

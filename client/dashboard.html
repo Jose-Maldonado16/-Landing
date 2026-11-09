@@ -8,83 +8,85 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Pacifico&display=swap" rel="stylesheet" />
-  
-  <!-- Reutilizamos estilos base -->
   <link rel="stylesheet" href="/css/styles.css" />
   <link rel="stylesheet" href="/css/responsive.css" />
-  <!-- Estilos específicos del dashboard -->
   <link rel="stylesheet" href="/css/dashboard.css" />
+  <style>
+    /* Animación para el spinner del loader */
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+  </style>
 </head>
 <body class="dashboard-body">
 
-  <!-- ============ NAVBAR INTERNA ============ -->
-  <header class="dash-navbar">
-    <div class="container dash-navbar__container">
-      <a href="/index.html" class="dash-brand">
-        <span class="dash-brand-icon">🍦</span>
-        <span class="dash-brand-text">Dulce<span class="dash-brand-accent">Mania</span></span>
-      </a>
-      
-      <div class="dash-user">
-        <span id="userName" class="dash-user-name">Cargando...</span>
-        <button id="btnLogout" class="btn btn--outline btn--sm">Salir</button>
+  <!-- PANTALLA DE CARGA (Se oculta cuando todo está listo) -->
+  <div id="appLoader" style="position:fixed;inset:0;background:#fff;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;">
+    <div style="font-size:3rem;animation:spin 1s linear infinite;">🍦</div>
+    <p style="font-weight:600;color:#64748b;">Verificando sesión...</p>
+  </div>
+
+  <!-- CONTENIDO REAL (Oculto al inicio) -->
+  <div id="appWrapper" style="display:none;">
+    
+    <header class="dash-navbar">
+      <div class="container dash-navbar__container">
+        <a href="/index.html" class="dash-brand">
+          <span class="dash-brand-icon">🍦</span>
+          <span class="dash-brand-text">Dulce<span class="dash-brand-accent">Mania</span></span>
+        </a>
+        <div class="dash-user">
+          <span id="userName" class="dash-user-name">Cargando...</span>
+          <button id="btnLogout" class="btn btn--outline btn--sm">Salir</button>
+        </div>
       </div>
-    </div>
-  </header>
+    </header>
 
-  <main class="container dash-main">
-    <!-- ============ HEADER DEL CATÁLOGO ============ -->
-    <section class="dash-header">
-      <h1 class="dash-title">¡Hola, <span id="greetingName">Cliente</span>! 👋</h1>
-      <p class="dash-subtitle">¿Qué se te antoja hoy?</p>
-    </section>
+    <main class="container dash-main">
+      <section class="dash-header">
+        <h1 class="dash-title">¡Hola, <span id="greetingName">Cliente</span>! 👋</h1>
+        <p class="dash-subtitle">¿Qué se te antoja hoy?</p>
+      </section>
 
-    <!-- ============ FILTROS ============ -->
-    <section class="dash-filters" id="categoryFilters">
-      <button class="filter-btn filter-btn--active" data-filter="all">Todo</button>
-      <button class="filter-btn" data-filter="helados">🍦 Helados</button>
-      <button class="filter-btn" data-filter="pasteles">🎂 Pasteles</button>
-      <button class="filter-btn" data-filter="panes">🥐 Panes</button>
-      <button class="filter-btn" data-filter="bebidas">☕ Bebidas</button>
-      <button class="filter-btn" data-filter="complementos">🍫 Complementos</button>
-    </section>
+      <section class="dash-filters" id="categoryFilters">
+        <button class="filter-btn filter-btn--active" data-filter="all">Todo</button>
+        <button class="filter-btn" data-filter="helados">🍦 Helados</button>
+        <button class="filter-btn" data-filter="pasteles">🎂 Pasteles</button>
+        <button class="filter-btn" data-filter="panes">🥐 Panes</button>
+        <button class="filter-btn" data-filter="bebidas">☕ Bebidas</button>
+        <button class="filter-btn" data-filter="complementos">🍫 Complementos</button>
+      </section>
 
-    <!-- ============ GRID DE PRODUCTOS ============ -->
-    <section id="productGrid" class="dash-products">
-      <!-- Los productos se cargan vía JS -->
-      <p class="loading-text">Cargando deliciosos productos...</p>
-    </section>
-  </main>
+      <section id="productGrid" class="dash-products">
+        <p class="loading-text">Cargando deliciosos productos...</p>
+      </section>
+    </main>
 
-  <!-- ============ CARRITO FLOTANTE ============ -->
-  <button id="cartToggle" class="cart-fab" aria-label="Abrir carrito">
-    🛒
-    <span id="cartBadge" class="cart-badge hidden">0</span>
-  </button>
+    <button id="cartToggle" class="cart-fab" aria-label="Abrir carrito">
+      🛒
+      <span id="cartBadge" class="cart-badge hidden">0</span>
+    </button>
 
-  <aside id="cartSidebar" class="cart-sidebar">
-    <div class="cart-header">
-      <h2>Tu Carrito</h2>
-      <button id="cartClose" class="cart-close" aria-label="Cerrar carrito">✕</button>
-    </div>
-    <div id="cartItems" class="cart-items">
-      <!-- Items del carrito -->
-    </div>
-    <div class="cart-footer">
-      <div class="cart-total">
-        <span>Total:</span>
-        <strong id="cartTotal">Bs. 0.00</strong>
+    <aside id="cartSidebar" class="cart-sidebar">
+      <div class="cart-header">
+        <h2>Tu Carrito</h2>
+        <button id="cartClose" class="cart-close" aria-label="Cerrar carrito">✕</button>
       </div>
-      <button id="btnCheckout" class="btn btn--primary btn--block">Ir a Pagar</button>
-    </div>
-  </aside>
-  
-  <!-- Fondo oscuro para el carrito en móviles -->
-  <div id="cartOverlay" class="cart-overlay hidden"></div>
+      <div id="cartItems" class="cart-items">
+        <!-- Items del carrito -->
+      </div>
+      <div class="cart-footer">
+        <div class="cart-total">
+          <span>Total:</span>
+          <strong id="cartTotal">Bs. 0.00</strong>
+        </div>
+        <button id="btnCheckout" class="btn btn--primary btn--block">Ir a Pagar</button>
+      </div>
+    </aside>
+    
+    <div id="cartOverlay" class="cart-overlay hidden"></div>
 
-  <!-- ... resto del html ... -->
+  </div>
 
-  <!-- 1. Cargamos Supabase desde CDN global -->
+  <!-- SCRIPTS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/js/supabaseClient.js"></script>
   <script src="/js/client/catalog.js"></script>
