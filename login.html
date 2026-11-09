@@ -4,11 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Iniciar Sesión — DulceMania 🍦</title>
-  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg" />
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Pacifico&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="../css/auth.css" />
+  <link rel="stylesheet" href="/css/auth.css" />
 </head>
 <body class="auth-body">
   <main class="auth-container">
@@ -27,13 +27,11 @@
         <button id="tabRegister" class="auth-tab" type="button">Registrarse</button>
       </div>
 
-      <!-- FORMULARIO LOGIN -->
       <form id="loginForm" class="auth-form" novalidate>
         <div class="auth-field">
           <label for="loginEmail">Correo electrónico</label>
           <input id="loginEmail" type="email" name="email" placeholder="tu@correo.com" required autocomplete="email" />
         </div>
-
         <div class="auth-field">
           <label for="loginPassword">Contraseña</label>
           <div class="auth-password-wrap">
@@ -41,31 +39,23 @@
             <button type="button" class="auth-toggle-pass" data-target="loginPassword" aria-label="Mostrar contraseña">👁️</button>
           </div>
         </div>
-
         <div id="loginError" class="auth-error hidden"></div>
-
-        <button type="submit" class="auth-btn auth-btn--primary">
-          <span class="auth-btn-text">Entrar</span>
-        </button>
+        <button type="submit" class="auth-btn auth-btn--primary"><span class="auth-btn-text">Entrar</span></button>
       </form>
 
-      <!-- FORMULARIO REGISTRO -->
       <form id="registerForm" class="auth-form hidden" novalidate>
         <div class="auth-field">
           <label for="regName">Nombre completo</label>
           <input id="regName" type="text" name="full_name" placeholder="José Maldonado" required minlength="3" autocomplete="name" />
         </div>
-
         <div class="auth-field">
           <label for="regEmail">Correo electrónico</label>
           <input id="regEmail" type="email" name="email" placeholder="tu@correo.com" required autocomplete="email" />
         </div>
-
         <div class="auth-field">
           <label for="regPhone">Teléfono (opcional)</label>
           <input id="regPhone" type="tel" name="phone" placeholder="+591 70000000" autocomplete="tel" />
         </div>
-
         <div class="auth-field">
           <label for="regPassword">Contraseña</label>
           <div class="auth-password-wrap">
@@ -73,23 +63,19 @@
             <button type="button" class="auth-toggle-pass" data-target="regPassword" aria-label="Mostrar contraseña">👁️</button>
           </div>
         </div>
-
         <div id="registerError" class="auth-error hidden"></div>
         <div id="registerSuccess" class="auth-success hidden"></div>
-
-        <button type="submit" class="auth-btn auth-btn--primary">
-          <span class="auth-btn-text">Crear cuenta</span>
-        </button>
+        <button type="submit" class="auth-btn auth-btn--primary"><span class="auth-btn-text">Crear cuenta</span></button>
       </form>
 
       <footer class="auth-footer">
         <p>¿Olvidaste tu contraseña? Contacta con el administrador.</p>
         <a href="/index.html">← Volver al inicio</a>
       </footer>
-
     </section>
   </main>
-  
+
+  <!-- SCRIPTS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/js/supabaseClient.js"></script>
   <script src="/js/auth.js"></script>

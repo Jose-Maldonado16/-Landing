@@ -1,16 +1,15 @@
 /* ============================================
-   LANDING-AUTH.JS — Conecta la landing con Supabase
+   LANDING-AUTH.JS — Lógica de sesión en la landing
    ============================================ */
-import { supabase } from './supabaseClient.js';
-
 document.addEventListener('DOMContentLoaded', async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  const navActions = document.querySelector('.navbar__actions');
-  const mobileCtaGroup = document.querySelector('.mobile-menu__cta-group');
+  const { data: { session } } = await window.supabase.auth.getSession();
+  
+  const navActions = document.getElementById('navActions');
+  const mobileCtaGroup = document.getElementById('mobileCtaGroup');
 
   if (session) {
-    // Usuario autenticado: Obtener su rol
-    const { data: profile } = await supabase
+    // Usuario autenticado
+    const { data: profile } = await window.supabase
       .from('profiles')
       .select('role, full_name')
       .eq('id', session.user.id)
@@ -40,9 +39,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       `;
     }
 
-    // Función para cerrar sesión
+    // Función logout
     const handleLogout = async () => {
-      await supabase.auth.signOut();
+      await window.supabase.auth.signOut();
       window.location.reload();
     };
 
@@ -53,28 +52,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Usuario NO autenticado
     if (navActions) {
       navActions.innerHTML = `
-        <a href="login.html" class="btn btn--outline btn--sm">Iniciar Sesión</a>
-        <a href="login.html?tab=register" class="btn btn--primary btn--sm">Registrarse</a>
+        <a href="/login.html" class="btn btn--outline btn--sm">Iniciar Sesión</a>
+        <a href="/login.html?tab=register" class="btn btn--primary btn--sm">Registrarse</a>
       `;
     }
     if (mobileCtaGroup) {
       mobileCtaGroup.innerHTML = `
-        <a href="login.html" class="btn btn--outline btn--block">Iniciar Sesión</a>
-        <a href="login.html?tab=register" class="btn btn--primary btn--block">Registrarse</a>
+        <a href="/login.html" class="btn btn--outline btn--block">Iniciar Sesión</a>
+        <a href="/login.html?tab=register" class="btn btn--primary btn--block">Registrarse</a>
       `;
     }
   }
 
-  // Redirigir los botones de "Pedir Ahora" de la landing al panel o login
-  const ctaButtons = document.querySelectorAll('a[href="#pedir"], a[href="#menu"]');
+  // Redirigir los botones de "Pedir Ahora"
+  const ctaButtons = document.querySelectorAll('#ctaMenuLogin, #ctaBannerLogin, a[href="#menu"].btn--primary');
   ctaButtons.forEach(btn => {
     btn.addEventListener('click', (e) => {
+      e.preventDefault();
       if (!session) {
-        e.preventDefault();
-        window.location.href = 'login.html';
+        window.location.href = '/login.html';
       } else {
-        e.preventDefault();
-        // Asumiendo que el cliente va a su dashboard a pedir
+        // Si ya está logueado, lo mandamos a su panel
+        const { data: { user } } = await window.supabase.auth.getUser(); // fallback
         window.location.href = '/client/dashboard.html'; 
       }
     });
