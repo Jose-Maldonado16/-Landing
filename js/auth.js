@@ -178,3 +178,9 @@ registerForm.addEventListener('submit', async (e) => {
     redirectByRole(role);
   }
 })();
+
+/* ---------- Detectar si viene con ?tab=register desde la landing ---------- */
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('tab') === 'register') {
+  showTab('register');
+}
