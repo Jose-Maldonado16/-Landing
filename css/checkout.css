@@ -1,0 +1,195 @@
+/* ============================================
+   CHECKOUT — Estilos del flujo de pago
+   ============================================ */
+.checkout-main {
+  padding-top: 2rem;
+  padding-bottom: 4rem;
+}
+
+.checkout-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+@media (min-width: 900px) {
+  .checkout-grid { grid-template-columns: 1fr 380px; }
+}
+
+.checkout-form-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.checkout-section {
+  background: #fff;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.03);
+  border: 1px solid var(--slate-100);
+}
+.checkout-section h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--slate-900);
+  margin-bottom: 1rem;
+}
+.checkout-hint {
+  font-size: 0.85rem;
+  color: var(--slate-500);
+  margin-bottom: 1rem;
+  margin-top: -0.5rem;
+}
+
+/* Radios tipo tarjeta */
+.radio-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.radio-card {
+  cursor: pointer;
+}
+.radio-card input { display: none; }
+.radio-content {
+  border: 2px solid var(--slate-200);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: all 0.2s;
+}
+.radio-card input:checked + .radio-content {
+  border-color: var(--brand-500);
+  background: var(--brand-50);
+  box-shadow: 0 0 0 3px rgba(244,63,94,0.1);
+}
+.radio-icon { font-size: 1.5rem; }
+.radio-content strong { display: block; font-size: 0.95rem; color: var(--slate-900); }
+.radio-content span { font-size: 0.8rem; color: var(--slate-500); }
+
+/* Campos */
+.checkout-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.checkout-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 1rem;
+}
+.checkout-field label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--slate-700);
+}
+.checkout-field input,
+.checkout-field textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1.5px solid var(--slate-200);
+  border-radius: 0.5rem;
+  font-family: inherit;
+  font-size: 1rem;
+  color: var(--slate-900);
+  background: #fff;
+  transition: border-color 0.2s;
+}
+.checkout-field input:focus,
+.checkout-field textarea:focus {
+  outline: none;
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px rgba(244,63,94,0.15);
+}
+.checkout-field textarea { resize: vertical; }
+
+/* Pagos */
+.payment-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+.payment-card { cursor: pointer; }
+.payment-card input { display: none; }
+.payment-content {
+  border: 2px solid var(--slate-200);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  text-align: center;
+  font-weight: 600;
+  color: var(--slate-700);
+  transition: all 0.2s;
+}
+.payment-content span { display: block; font-size: 1.5rem; margin-bottom: 0.25rem; }
+.payment-card input:checked + .payment-content {
+  border-color: var(--brand-500);
+  background: var(--brand-50);
+  color: var(--brand-700);
+  box-shadow: 0 0 0 3px rgba(244,63,94,0.1);
+}
+
+/* Resumen */
+.checkout-summary {
+  background: #fff;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+  border: 1px solid var(--slate-100);
+  position: sticky;
+  top: 90px;
+}
+.checkout-summary h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--slate-900);
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--slate-100);
+}
+.summary-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  color: var(--slate-600);
+}
+.summary-item-qty { color: var(--slate-400); font-weight: 600; margin-right: 0.5rem; }
+.summary-item-price { font-weight: 600; color: var(--slate-900); }
+
+.summary-totals {
+  border-top: 1px solid var(--slate-100);
+  padding-top: 1rem;
+  margin-bottom: 1.5rem;
+}
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.95rem;
+  color: var(--slate-600);
+  margin-bottom: 0.5rem;
+}
+.summary-row--total {
+  font-size: 1.1rem;
+  color: var(--slate-900);
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--slate-200);
+}
+.summary-row--total strong {
+  color: var(--brand-600);
+  font-size: 1.4rem;
+}
+
+/* Utilidad */
+.hidden { display: none !important; }
