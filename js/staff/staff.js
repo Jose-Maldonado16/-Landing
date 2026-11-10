@@ -1,5 +1,5 @@
 /* ============================================
-   STAFF.JS — Gestión de pedidos en tiempo real
+   STAFF.JS — Gestión de pedidos en tiempo real (V2)
    ============================================ */
 (function() {
   let allOrders = [];
@@ -25,13 +25,16 @@
       .channel('orders-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
         console.log('Cambio en pedido:', payload);
-        loadOrders(); // Recargar al detectar cambios
+        // Solo recargar si el cambio NO fue hecho por este mismo usuario
+        // (para no interferir con la actualización local optimista)
+        if (payload.eventType !== 'UPDATE' || payload.new.status !== payload.old.status) {
+          loadOrders();
+        }
       })
       .subscribe();
   });
 
   async function loadOrders() {
-    // Traemos solo los pedidos activos (no entregados/cancelados) con nombre del cliente
     const { data, error } = await window.supabase
       .from('orders')
       .select(`
@@ -51,16 +54,14 @@
   }
 
   function renderKanban() {
-    // Limpiar columnas
     const cols = {
       confirmado: document.getElementById('col-confirmado'),
       en_preparacion: document.getElementById('col-en_preparacion'),
       listo: document.getElementById('col-listo')
     };
     
-    Object.values(cols).forEach(c => c.innerHTML = '');
+    Object.values(cols).forEach(c => { if (c) c.innerHTML = ''; });
 
-    // Agrupar
     const groups = {
       confirmado: allOrders.filter(o => o.status === 'confirmado'),
       en_preparacion: allOrders.filter(o => o.status === 'en_preparacion'),
@@ -75,6 +76,8 @@
     // Renderizar cada grupo
     Object.keys(groups).forEach(status => {
       const container = cols[status];
+      if (!container) return;
+      
       if (groups[status].length === 0) {
         container.innerHTML = `<p class="empty-col">No hay pedidos aquí.</p>`;
         return;
@@ -116,15 +119,32 @@
     `;
   }
 
-  // Cambiar estado de un pedido
+  // ✅ FUNCIÓN CORREGIDA: Actualiza localmente Y en Supabase
   window.__changeStatus = async (orderId, newStatus) => {
+    // 1. Actualización optimista (UI responde al instante)
+    const orderIndex = allOrders.findIndex(o => o.id === orderId);
+    if (orderIndex !== -1) {
+      allOrders[orderIndex].status = newStatus;
+      
+      // Si pasa a "entregado", lo quitamos de la lista visual
+      if (newStatus === 'entregado') {
+        allOrders.splice(orderIndex, 1);
+      }
+      
+      renderKanban(); // 👈 Esto es lo que faltaba
+    }
+
+    // 2. Actualizar en Supabase
     const { error } = await window.supabase
       .from('orders')
       .update({ status: newStatus })
       .eq('id', orderId);
 
     if (error) {
-      alert('Error al cambiar estado: ' + error.message);
+      console.error('Error al actualizar en Supabase:', error);
+      alert('Error al actualizar: ' + error.message);
+      // Si falla, recargar desde Supabase para revertir el cambio visual
+      await loadOrders();
     }
   };
 })();
