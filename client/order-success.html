@@ -16,29 +16,30 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: linear-gradient(135deg, #fff1f2 0%, #ffffff 50%, #fef3c7 100%);
+      background: var(--bg-dark);
       padding: 2rem;
     }
     .success-card {
-      background: #fff;
+      background: var(--card-dark);
       border-radius: 1.5rem;
       padding: 3rem 2rem;
       max-width: 500px;
       width: 100%;
       text-align: center;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-      border: 1px solid var(--slate-100);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      border: 1px solid var(--border-dark);
     }
     .success-icon { font-size: 4rem; margin-bottom: 1rem; }
-    .success-title { font-size: 1.75rem; font-weight: 800; color: var(--slate-900); }
-    .success-text { margin-top: 0.75rem; color: var(--slate-600); font-size: 1.05rem; }
+    .success-title { font-size: 1.75rem; font-weight: 800; color: var(--text-main); }
+    .success-text { margin-top: 0.75rem; color: var(--text-muted); font-size: 1.05rem; }
     .success-order { 
-      background: var(--slate-50); 
+      background: #0b1120; 
       padding: 1rem; 
       border-radius: 0.75rem; 
       margin-top: 1.5rem; 
       font-weight: 600; 
-      color: var(--slate-700); 
+      color: var(--text-main);
+      border: 1px solid var(--border-dark);
     }
     .success-actions { margin-top: 2rem; display: flex; flex-direction: column; gap: 0.75rem; }
     @media (min-width: 640px) {
@@ -57,27 +58,20 @@
     </div>
   </div>
 
-  <!-- 1. Cargamos Supabase desde CDN global -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  
-  <!-- 2. Cargamos el cliente global -->
   <script src="/js/supabaseClient.js"></script>
-
-  <!-- 3. Lógica de la página SIN type="module" -->
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
-      // Proteger página
       const profile = await window.guardPage(['client']);
       if (!profile) return;
 
-      // Obtener ID del pedido de la URL
       const params = new URLSearchParams(window.location.search);
       const orderId = params.get('id');
       
       if (orderId) {
         document.getElementById('orderInfo').innerHTML = `
           Pedido #${orderId}<br>
-          <span style="font-size:0.85rem;color:var(--slate-500);font-weight:400;">Estado: Confirmado</span>
+          <span style="font-size:0.85rem;color:var(--text-muted);font-weight:400;">Estado: Confirmado</span>
         `;
       } else {
         document.getElementById('orderInfo').textContent = 'Pedido registrado exitosamente';
