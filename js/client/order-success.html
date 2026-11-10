@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>¡Pedido Confirmado! — DulceMania 🍦</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Pacifico&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="stylesheet" href="/css/dashboard.css" />
+  <style>
+    .success-body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-dark);
+      padding: 2rem;
+    }
+    .success-card {
+      background: var(--card-dark);
+      border-radius: 1.5rem;
+      padding: 3rem 2rem;
+      max-width: 500px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      border: 1px solid var(--border-dark);
+    }
+    .success-icon { font-size: 4rem; margin-bottom: 1rem; }
+    .success-title { font-size: 1.75rem; font-weight: 800; color: var(--text-main); }
+    .success-text { margin-top: 0.75rem; color: var(--text-muted); font-size: 1.05rem; }
+    .success-order { 
+      background: #0b1120; 
+      padding: 1rem; 
+      border-radius: 0.75rem; 
+      margin-top: 1.5rem; 
+      font-weight: 600; 
+      color: var(--text-main);
+      border: 1px solid var(--border-dark);
+    }
+    .success-actions { margin-top: 2rem; display: flex; flex-direction: column; gap: 0.75rem; }
+    @media (min-width: 640px) {
+      .success-actions { flex-direction: row; justify-content: center; }
+    }
+  </style>
+</head>
+<body class="success-body">
+  <div class="success-card">
+    <div class="success-icon">🎉</div>
+    <h1 class="success-title">¡Pedido Confirmado!</h1>
+    <p class="success-text">Tu antojo está en preparación. Te avisaremos cuando esté listo.</p>
+    <div id="orderInfo" class="success-order">Cargando...</div>
+    <div class="success-actions">
+      <a href="/client/dashboard.html" class="btn btn--outline">Volver al menú</a>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabaseClient.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const profile = await window.guardPage(['client']);
+      if (!profile) return;
+
+      const params = new URLSearchParams(window.location.search);
+      const orderId = params.get('id');
+      
+      if (orderId) {
+        document.getElementById('orderInfo').innerHTML = `
+          Pedido #${orderId}<br>
+          <span style="font-size:0.85rem;color:var(--text-muted);font-weight:400;">Estado: Confirmado</span>
+        `;
+      } else {
+        document.getElementById('orderInfo').textContent = 'Pedido registrado exitosamente';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -8,14 +8,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Pacifico&display=swap" rel="stylesheet" />
-  
   <link rel="stylesheet" href="/css/styles.css" />
   <link rel="stylesheet" href="/css/dashboard.css" />
   <link rel="stylesheet" href="/css/checkout.css" />
 </head>
 <body class="dashboard-body">
 
-  <!-- NAVBAR INTERNA -->
   <header class="dash-navbar">
     <div class="container dash-navbar__container">
       <a href="/client/dashboard.html" class="dash-brand">
@@ -32,7 +30,6 @@
 
     <form id="checkoutForm" class="checkout-grid">
       
-      <!-- COLUMNA IZQUIERDA: Formulario -->
       <div class="checkout-form-col">
         
         <!-- Tipo de entrega -->
@@ -61,7 +58,6 @@
             </label>
           </div>
           
-          <!-- Campo de dirección (oculto por defecto) -->
           <div id="addressField" class="checkout-field hidden">
             <label for="deliveryAddress">Dirección de entrega *</label>
             <input type="text" id="deliveryAddress" placeholder="Ej: Calle Bolívar #123, Sucre" />
@@ -114,20 +110,19 @@
           <h2>4. Personalización (opcional)</h2>
           <div class="checkout-field">
             <label for="orderNotes">Notas para tu pedido</label>
-            <textarea id="orderNotes" rows="2" placeholder="Ej: Sin azúcar, mensaje especial, ingredientes extra..."></textarea>
+            <textarea id="orderNotes" rows="2" placeholder="Ej: Sin azúcar, mensaje especial..."></textarea>
           </div>
         </section>
 
-        <div id="checkoutError" class="auth-error hidden"></div>
+        <!-- ERROR -->
+        <div id="checkoutError" class="auth-error hidden" style="margin-bottom: 1rem;"></div>
       </div>
 
-      <!-- COLUMNA DERECHA: Resumen -->
+      <!-- Resumen -->
       <aside class="checkout-summary-col">
         <div class="checkout-summary">
           <h2>Resumen del pedido</h2>
-          <div id="summaryItems" class="summary-items">
-            <!-- Se llena con JS -->
-          </div>
+          <div id="summaryItems" class="summary-items"></div>
           <div class="summary-totals">
             <div class="summary-row">
               <span>Subtotal</span>
@@ -147,6 +142,8 @@
     </form>
   </main>
 
-  <script type="module" src="/js/client/checkout.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabaseClient.js"></script>
+  <script src="/js/client/checkout.js"></script>
 </body>
 </html>
