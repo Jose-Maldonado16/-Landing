@@ -11,55 +11,295 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet" />
   
-  <!-- Cargamos el CSS base, pero lo sobreescribiremos con el bloque de abajo -->
-  <link rel="stylesheet" href="/css/styles.css" />
-  <link rel="stylesheet" href="/css/responsive.css" />
-
   <style>
     /* ============================================
-       FORZAR TEMA CLARO EN LA LANDING Y ARREGLAR CONTRASTES
+       RESET Y ESTILOS BASE (MODO OSCURO FORZADO)
        ============================================ */
-    html, body { background-color: #ffffff !important; color: #0f172a !important; }
-
-    /* Forzar que las tarjetas tengan fondo blanco y texto oscuro */
-    .value-card, .feature-card, .testimonial-card {
-      background-color: #f8fafc !important; /* Gris muy claro */
-      color: #0f172a !important;
-      border: 1px solid #e2e8f0 !important;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     
-    .value-card h3, .feature-card h3, .testimonial-card__name {
-      color: #0f172a !important;
-    }
-    
-    .value-card p, .feature-card p, .testimonial-card blockquote, .testimonial-card__role {
-      color: #475569 !important;
+    html, body {
+      background-color: #0f172a !important; /* Fondo oscuro principal */
+      color: #f8fafc !important; /* Texto blanco por defecto */
+      font-family: 'Inter', system-ui, sans-serif;
+      line-height: 1.6;
+      overflow-x: hidden;
     }
 
-    /* Asegurar que los iconos del feature-card se vean bien */
-    .feature-card__icon {
-      background-color: #f43f5e !important;
-      color: #ffffff !important;
+    a { text-decoration: none; color: inherit; }
+    ul { list-style: none; }
+    img { max-width: 100%; display: block; }
+
+    /* ============================================
+       NAVBAR
+       ============================================ */
+    .navbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid #334155;
+      height: 72px;
+      display: flex;
+      align-items: center;
     }
+    .navbar__container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .navbar__brand {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: 'Pacifico', cursive;
+      font-size: 1.5rem;
+      color: #f8fafc;
+    }
+    .navbar__brand-accent { color: #f59e0b; }
+    
+    .navbar__menu { display: none; gap: 2rem; }
+    .navbar__menu a { color: #94a3b8; font-weight: 500; transition: color 0.2s; }
+    .navbar__menu a:hover { color: #f8fafc; }
+    
+    .navbar__actions { display: none; gap: 1rem; align-items: center; }
+    
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem 1.5rem;
+      border-radius: 99px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+    .btn--primary { background: #f43f5e; color: #fff; box-shadow: 0 10px 25px rgba(244,63,94,0.3); }
+    .btn--primary:hover { background: #e11d48; transform: translateY(-2px); }
+    .btn--outline { border: 2px solid #334155; color: #f8fafc; background: transparent; }
+    .btn--outline:hover { background: #334155; }
+    .btn--accent { background: #f59e0b; color: #000; }
+    .btn--accent:hover { background: #d97706; transform: translateY(-2px); }
+    .btn--sm { padding: 0.5rem 1rem; font-size: 0.85rem; }
+
+    /* ============================================
+       HERO
+       ============================================ */
+    .hero {
+      padding: 8rem 0 5rem;
+      background: radial-gradient(circle at 15% 50%, rgba(244, 63, 94, 0.15), transparent 30%),
+                  radial-gradient(circle at 85% 30%, rgba(245, 158, 11, 0.15), transparent 30%);
+    }
+    .hero__grid {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      display: grid;
+      gap: 3rem;
+      align-items: center;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 1rem;
+      border-radius: 99px;
+      background: rgba(244, 63, 94, 0.15);
+      color: #fda4af;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+    }
+    .badge__dot {
+      width: 8px; height: 8px;
+      background: #f43f5e;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    .hero__title {
+      font-size: clamp(2.5rem, 5vw, 4rem);
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      margin-bottom: 1.5rem;
+    }
+    .hero__title-accent { display: block; color: #f43f5e; }
+    .hero__subtitle {
+      font-size: 1.15rem;
+      color: #94a3b8;
+      max-width: 540px;
+      margin-bottom: 2rem;
+    }
+    .hero__ctas { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; }
+    .hero__checks { display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: 0.9rem; color: #94a3b8; }
+    .hero__checks .check { color: #f43f5e; font-weight: bold; margin-right: 0.25rem; }
+
+    .hero__media { position: relative; }
+    .hero__image-wrapper {
+      border-radius: 1.5rem;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+      border: 1px solid #334155;
+    }
+    .hero__image-wrapper img { width: 100%; height: 400px; object-fit: cover; }
+    
+    .hero__card {
+      position: absolute;
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 1rem;
+      border-radius: 1rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+    .hero__card--bottom { bottom: -1.5rem; left: -1rem; display: flex; align-items: center; gap: 0.75rem; }
+    .hero__card--top { top: -1rem; right: -0.5rem; }
+    .hero__card-label { font-size: 0.75rem; color: #94a3b8; }
+    .hero__card-value { font-weight: 700; color: #f8fafc; }
+
+    /* ============================================
+       SECCIONES GENERALES
+       ============================================ */
+    .section { padding: 5rem 0; }
+    .section--dark { background: #0b1120; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
+    .text-center { text-align: center; }
+    
+    .section__title {
+      font-size: clamp(2rem, 4vw, 2.75rem);
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 1rem;
+      letter-spacing: -0.02em;
+    }
+    .section__subtitle {
+      font-size: 1.1rem;
+      color: #94a3b8;
+      max-width: 700px;
+      margin: 0 auto 3rem;
+    }
+
+    /* Grids */
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+    @media (min-width: 768px) { .grid-3 { grid-template-columns: repeat(3, 1fr); } }
+
+    /* Tarjetas genéricas (Value, Feature, Testimonial) */
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 1rem;
+      padding: 2rem;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .card:hover { border-color: #f43f5e; transform: translateY(-4px); }
+    .card h3 { font-size: 1.25rem; font-weight: 700; color: #f8fafc; margin-bottom: 0.75rem; }
+    .card p { color: #94a3b8; font-size: 0.95rem; }
+    .card__icon { font-size: 2.5rem; margin-bottom: 1rem; }
+
+    /* Tarjetas de Menú (Landing preview) */
+    .menu-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 1rem;
+      overflow: hidden;
+      transition: transform 0.2s;
+    }
+    .menu-card:hover { transform: translateY(-5px); }
+    .menu-card__img { height: 200px; width: 100%; object-fit: cover; }
+    .menu-card__body { padding: 1.5rem; }
+    .menu-card__tag {
+      display: inline-block;
+      background: rgba(244, 63, 94, 0.15);
+      color: #fda4af;
+      padding: 0.25rem 0.75rem;
+      border-radius: 99px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+    .menu-card h3 { font-size: 1.25rem; font-weight: 700; color: #f8fafc; margin-bottom: 0.5rem; }
+    .menu-card p { color: #94a3b8; font-size: 0.9rem; }
+
+    /* Testimonios */
+    .testimonial-card { background: #1e293b; border: 1px solid #334155; border-radius: 1rem; padding: 2rem; }
+    .testimonial-card__stars { color: #f59e0b; font-size: 1.2rem; margin-bottom: 1rem; letter-spacing: 2px; }
+    .testimonial-card blockquote { font-style: italic; color: #e2e8f0; margin-bottom: 1.5rem; line-height: 1.6; }
+    .testimonial-card figcaption { display: flex; align-items: center; gap: 1rem; }
+    .testimonial-card figcaption img { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; }
+    .testimonial-card__name { font-weight: 700; color: #f8fafc; }
+    .testimonial-card__role { font-size: 0.85rem; color: #94a3b8; }
+
+    /* CTA Banner */
+    .cta-banner {
+      background: linear-gradient(135deg, #e11d48, #be123c);
+      padding: 5rem 1.5rem;
+      text-align: center;
+    }
+    .cta-banner h2 { font-size: clamp(2rem, 4vw, 3rem); font-weight: 800; color: #fff; margin-bottom: 1rem; }
+    .cta-banner p { color: #fecdd3; font-size: 1.1rem; margin-bottom: 2rem; }
+    .cta-banner .btn--white { background: #fff; color: #be123c; padding: 1rem 2rem; font-size: 1.1rem; }
+    .cta-banner .btn--white:hover { background: #f8fafc; transform: translateY(-2px); }
+
+    /* Footer */
+    .footer { background: #0b1120; padding: 4rem 0 2rem; border-top: 1px solid #334155; }
+    .footer__grid { display: grid; gap: 2rem; grid-template-columns: 1fr; }
+    @media (min-width: 768px) { .footer__grid { grid-template-columns: 2fr 1fr 1fr; } }
+    .footer__brand-title { font-family: 'Pacifico', cursive; font-size: 1.5rem; color: #f8fafc; margin-bottom: 1rem; }
+    .footer__brand-text { color: #64748b; font-size: 0.9rem; }
+    .footer h4 { color: #f8fafc; font-weight: 700; margin-bottom: 1rem; }
+    .footer ul { display: flex; flex-direction: column; gap: 0.5rem; }
+    .footer ul a { color: #94a3b8; font-size: 0.9rem; transition: color 0.2s; }
+    .footer ul a:hover { color: #f43f5e; }
+    .footer__bottom { text-align: center; color: #64748b; font-size: 0.85rem; margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #334155; }
+
+    /* Responsive Navbar */
+    @media (min-width: 1024px) {
+      .navbar__menu { display: flex; }
+      .navbar__actions { display: flex; }
+      .navbar__toggle { display: none; }
+      .hero__grid { grid-template-columns: 1fr 1fr; }
+    }
+    
+    .navbar__toggle { background: none; border: none; color: #f8fafc; cursor: pointer; display: block; }
+    
+    /* Mobile Menu (simplificado) */
+    #mobileMenu {
+      position: fixed; top: 72px; left: 0; right: 0; background: #1e293b;
+      padding: 1.5rem; border-bottom: 1px solid #334155; z-index: 99;
+    }
+    #mobileMenu ul { display: flex; flex-direction: column; gap: 1rem; }
+    #mobileMenu a { color: #f8fafc; font-weight: 600; }
+    .hidden { display: none !important; }
+    
+    /* Animaciones */
+    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    .animate-float { animation: float 6s ease-in-out infinite; }
   </style>
 </head>
 <body>
 
   <!-- ============ NAVBAR ============ -->
-  <header id="navbar" class="navbar">
+  <header class="navbar">
     <nav class="navbar__container">
       <a href="#inicio" class="navbar__brand">
-        <span class="navbar__brand-icon">🍦</span>
-        <span class="navbar__brand-text">
-          Dulce<span class="navbar__brand-accent">Mania</span>
-        </span>
+        <span>🍦</span> Dulce<span class="navbar__brand-accent">Mania</span>
       </a>
 
       <ul class="navbar__menu">
         <li><a href="#inicio">Inicio</a></li>
         <li><a href="#menu">Menú</a></li>
         <li><a href="#beneficios">Beneficios</a></li>
-        <li><a href="#como-funciona">Cómo Pedir</a></li>
         <li><a href="#contacto">Contacto</a></li>
       </ul>
 
@@ -67,22 +307,19 @@
         <a href="/login.html" class="btn btn--outline btn--sm">Iniciar Sesión</a>
       </div>
 
-      <button id="menuBtn" class="navbar__toggle" aria-label="Abrir menú" aria-expanded="false">
-        <svg id="iconOpen" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
-        <svg id="iconClose" class="hidden" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      <button id="menuBtn" class="navbar__toggle">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
     </nav>
 
-    <div id="mobileMenu" class="mobile-menu hidden">
-      <ul class="mobile-menu__list">
+    <!-- Menú Móvil -->
+    <div id="mobileMenu" class="hidden">
+      <ul>
         <li><a href="#inicio">Inicio</a></li>
         <li><a href="#menu">Menú</a></li>
         <li><a href="#beneficios">Beneficios</a></li>
-        <li><a href="#como-funciona">Cómo Pedir</a></li>
         <li><a href="#contacto">Contacto</a></li>
-        <li class="mobile-menu__cta-group" id="mobileCtaGroup">
-          <a href="/login.html" class="btn btn--outline btn--block">Iniciar Sesión</a>
-        </li>
+        <li id="mobileCtaGroup"><a href="/login.html" class="btn btn--primary" style="width:100%;">Iniciar Sesión</a></li>
       </ul>
     </div>
   </header>
@@ -90,81 +327,62 @@
   <main>
     <!-- ============ HERO ============ -->
     <section id="inicio" class="hero">
-      <div class="hero__blob hero__blob--1"></div>
-      <div class="hero__blob hero__blob--2"></div>
-
-      <div class="container hero__grid">
-        <div class="hero__content animate-slide-up">
-          <span class="badge">
-            <span class="badge__dot"></span>
-            Sin filas · Sin esperas · Pedidos listos
-          </span>
-
-          <h1 class="hero__title" style="color: #0f172a;">
+      <div class="hero__grid">
+        <div class="hero__content">
+          <span class="badge"><span class="badge__dot"></span> Sin filas · Sin esperas</span>
+          <h1 class="hero__title">
             Tu antojo,
             <span class="hero__title-accent">listo en minutos</span>
           </h1>
-
-          <p class="hero__subtitle" style="color: #475569;">
+          <p class="hero__subtitle">
             Pide tus helados, pasteles, panes y bebidas favoritas desde cualquier lugar. 
             Personaliza, paga con QR, tarjeta o efectivo, y recoge en tienda o recibe a domicilio.
           </p>
-
           <div class="hero__ctas">
             <a href="/login.html" class="btn btn--primary" id="ctaBannerLogin">🛒 Pedir Ahora</a>
             <a href="#menu" class="btn btn--accent">🍨 Explorar Menú</a>
           </div>
-
-          <ul class="hero__checks" style="color: #475569;">
+          <ul class="hero__checks">
             <li><span class="check">✓</span> Pago QR, tarjeta o efectivo</li>
             <li><span class="check">✓</span> Recojo o delivery</li>
           </ul>
         </div>
 
-        <div class="hero__media animate-fade-in">
+        <div class="hero__media">
           <div class="hero__image-wrapper animate-float">
-            <img src="https://images.unsplash.com/photo-1567206563064-6f60f40a2b57?auto=format&fit=crop&w=900&q=80" alt="Helados artesanales de DulceMania" loading="eager" />
+            <img src="https://images.unsplash.com/photo-1567206563064-6f60f40a2b57?auto=format&fit=crop&w=900&q=80" alt="Helados" />
           </div>
-
-          <div class="hero__card hero__card--bottom" style="background: #fff; color: #0f172a;">
-            <div class="hero__card-icon">🛵</div>
+          <div class="hero__card hero__card--bottom">
+            <span style="font-size:1.5rem;">🛵</span>
             <div>
-              <p class="hero__card-label" style="color: #64748b;">Pedido en camino</p>
-              <p class="hero__card-value" style="color: #0f172a;">Listo en 12 min</p>
+              <div class="hero__card-label">Pedido en camino</div>
+              <div class="hero__card-value">Listo en 12 min</div>
             </div>
-          </div>
-
-          <div class="hero__card hero__card--top animate-float" style="background: #fff; color: #0f172a;">
-            <p class="hero__card-label" style="color: #64748b;">Pago confirmado</p>
-            <p class="hero__card-value" style="color: #0f172a;">📱 QR · Bs. 45</p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ============ PROPUESTA DE VALOR ============ -->
-    <section class="section value-prop" style="background: #fff;">
-      <div class="container container--narrow text-center">
-        <span class="badge badge--solid">Nuestra misión</span>
-        <h2 class="section__title" style="color: #0f172a;">Antójate sin hacer fila</h2>
-        <p class="section__subtitle" style="color: #475569;">
-          DulceMania nace para descongestionar la atención presencial de la Cafetería y Heladería Sucre. 
-          Pide desde tu celular, personaliza tu pedido y elige cómo y cuándo recibirlo.
+    <!-- ============ PROPUESTA ============ -->
+    <section class="section">
+      <div class="container text-center">
+        <h2 class="section__title">Antójate sin hacer fila</h2>
+        <p class="section__subtitle">
+          DulceMania nace para descongestionar la atención presencial. Pide desde tu celular, personaliza y elige cómo recibirlo.
         </p>
-
-        <div class="value-prop__grid">
-          <article class="value-card">
-            <div class="value-card__icon">⚡</div>
+        <div class="grid-3">
+          <article class="card">
+            <div class="card__icon">⚡</div>
             <h3>Sin esperas</h3>
             <p>Reduce la congestión en horas pico. Tu pedido te espera, no al revés.</p>
           </article>
-          <article class="value-card">
-            <div class="value-card__icon">🎨</div>
+          <article class="card">
+            <div class="card__icon">🎨</div>
             <h3>100% personalizado</h3>
             <p>Sin azúcar, mensaje especial, ingredientes extra: pídelo a tu manera.</p>
           </article>
-          <article class="value-card">
-            <div class="value-card__icon">💳</div>
+          <article class="card">
+            <div class="card__icon">💳</div>
             <h3>Paga como quieras</h3>
             <p>QR, tarjeta de crédito/débito o efectivo. Tú eliges el método.</p>
           </article>
@@ -172,144 +390,110 @@
       </div>
     </section>
 
-    <!-- ============ MENÚ (VISTA PREVIA) ============ -->
-    <section id="menu" class="section section--alt" style="background: #f8fafc;">
+    <!-- ============ MENÚ ============ -->
+    <section id="menu" class="section section--dark">
       <div class="container">
-        <header class="section__header">
-          <span class="badge badge--solid">Menú</span>
-          <h2 class="section__title" style="color: #0f172a;">Todo lo que se te antoje</h2>
-          <p class="section__subtitle" style="color: #475569;">
-            Helados, pasteles, panes, bebidas y complementos. Disponibilidad en tiempo real.
-          </p>
-        </header>
-
-        <div class="menu__grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem;">
-          <!-- Tarjeta 1 -->
-          <article class="service-card" style="background:#fff; border-radius:1rem; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-            <div class="service-card__media" style="height:200px; overflow:hidden; position:relative;">
-              <img src="https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?auto=format&fit=crop&w=600&q=80" alt="Helados" style="width:100%; height:100%; object-fit:cover;" />
-              <span class="service-card__tag" style="position:absolute; top:1rem; left:1rem; background:#fff; padding:0.25rem 0.75rem; border-radius:99px; font-size:0.75rem; font-weight:700; color:#e11d48;">🍦 Helados</span>
-            </div>
-            <div style="padding:1.5rem;">
-              <h3 style="font-size:1.25rem; font-weight:700; color:#0f172a;">Helados Artesanales</h3>
-              <p style="margin-top:0.5rem; color:#64748b; font-size:0.95rem;">Fresa, chocolate belga, vainilla y maracuyá. Con toppings a elección.</p>
+        <div class="text-center">
+          <h2 class="section__title">Todo lo que se te antoje</h2>
+          <p class="section__subtitle">Helados, pasteles, panes, bebidas y complementos. Disponibilidad en tiempo real.</p>
+        </div>
+        <div class="grid-3">
+          <article class="menu-card">
+            <img src="https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?auto=format&fit=crop&w=600&q=80" class="menu-card__img" alt="Helados">
+            <div class="menu-card__body">
+              <span class="menu-card__tag">🍦 Helados</span>
+              <h3>Helados Artesanales</h3>
+              <p>Fresa, chocolate belga, vainilla y maracuyá. Con toppings a elección.</p>
             </div>
           </article>
-
-          <!-- Tarjeta 2 -->
-          <article class="service-card" style="background:#fff; border-radius:1rem; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-            <div class="service-card__media" style="height:200px; overflow:hidden; position:relative;">
-              <img src="https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=600&q=80" alt="Pasteles" style="width:100%; height:100%; object-fit:cover;" />
-              <span class="service-card__tag" style="position:absolute; top:1rem; left:1rem; background:#fff; padding:0.25rem 0.75rem; border-radius:99px; font-size:0.75rem; font-weight:700; color:#e11d48;">🎂 Pasteles</span>
-            </div>
-            <div style="padding:1.5rem;">
-              <h3 style="font-size:1.25rem; font-weight:700; color:#0f172a;">Pasteles y Tortas</h3>
-              <p style="margin-top:0.5rem; color:#64748b; font-size:0.95rem;">Cheesecake de maracuyá, torta de chocolate y tarta de fresa.</p>
+          <article class="menu-card">
+            <img src="https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=600&q=80" class="menu-card__img" alt="Pasteles">
+            <div class="menu-card__body">
+              <span class="menu-card__tag">🎂 Pasteles</span>
+              <h3>Pasteles y Tortas</h3>
+              <p>Cheesecake de maracuyá, torta de chocolate y tarta de fresa.</p>
             </div>
           </article>
-
-          <!-- Tarjeta 3 -->
-          <article class="service-card" style="background:#fff; border-radius:1rem; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-            <div class="service-card__media" style="height:200px; overflow:hidden; position:relative;">
-              <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Bebidas" style="width:100%; height:100%; object-fit:cover;" />
-              <span class="service-card__tag" style="position:absolute; top:1rem; left:1rem; background:#fff; padding:0.25rem 0.75rem; border-radius:99px; font-size:0.75rem; font-weight:700; color:#e11d48;">☕ Bebidas</span>
-            </div>
-            <div style="padding:1.5rem;">
-              <h3 style="font-size:1.25rem; font-weight:700; color:#0f172a;">Cafés y Bebidas</h3>
-              <p style="margin-top:0.5rem; color:#64748b; font-size:0.95rem;">Latte, frappés, malteadas y jugos naturales recién preparados.</p>
+          <article class="menu-card">
+            <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" class="menu-card__img" alt="Bebidas">
+            <div class="menu-card__body">
+              <span class="menu-card__tag">☕ Bebidas</span>
+              <h3>Cafés y Bebidas</h3>
+              <p>Latte, frappés, malteadas y jugos naturales recién preparados.</p>
             </div>
           </article>
         </div>
-
-        <div style="text-align: center; margin-top: 3rem;">
+        <div class="text-center" style="margin-top: 3rem;">
           <a href="/login.html" class="btn btn--primary" id="ctaMenuLogin">🛒 Iniciar Sesión para Pedir</a>
         </div>
       </div>
     </section>
 
     <!-- ============ BENEFICIOS ============ -->
-    <section id="beneficios" class="section" style="background: #fff;">
+    <section id="beneficios" class="section">
       <div class="container">
-        <header class="section__header">
-          <span class="badge badge--accent">Confianza y rapidez</span>
-          <h2 class="section__title" style="color: #0f172a;">Por qué pedir en DulceMania</h2>
-          <p class="section__subtitle" style="color: #475569;">
-            Cada detalle está pensado para que pedir sea tan rico como comer.
-          </p>
-        </header>
-
-        <div class="features__grid">
-          <article class="feature-card">
-            <div class="feature-card__icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
-            </div>
+        <div class="text-center">
+          <h2 class="section__title">Por qué pedir en DulceMania</h2>
+          <p class="section__subtitle">Cada detalle está pensado para que pedir sea tan rico como comer.</p>
+        </div>
+        <div class="grid-3">
+          <article class="card">
+            <div class="card__icon">📋</div>
             <h3>Catálogo en tiempo real</h3>
-            <p>Consulta productos, precios y disponibilidad actualizada al instante. Si algo se agota, lo sabes al momento.</p>
+            <p>Consulta productos, precios y disponibilidad actualizada al instante.</p>
           </article>
-
-          <article class="feature-card">
-            <div class="feature-card__icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            </div>
+          <article class="card">
+            <div class="card__icon">⏱️</div>
             <h3>Seguimiento de pedido</h3>
-            <p>Consulta el estado: confirmado, en preparación, listo o entregado. Recibe una notificación cuando esté listo.</p>
+            <p>Consulta el estado: confirmado, en preparación, listo o entregado.</p>
           </article>
-
-          <article class="feature-card">
-            <div class="feature-card__icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-            </div>
-            <h3>Pagos seguros y variados</h3>
-            <p>QR con billetera digital, tarjeta de crédito/débito o efectivo. Comprobante digital al confirmar.</p>
+          <article class="card">
+            <div class="card__icon">🔒</div>
+            <h3>Pagos seguros</h3>
+            <p>QR, tarjeta o efectivo. Comprobante digital al confirmar.</p>
           </article>
         </div>
       </div>
     </section>
 
     <!-- ============ TESTIMONIOS ============ -->
-    <section class="section section--alt" style="background: #f8fafc;">
+    <section class="section section--dark">
       <div class="container">
-        <header class="section__header">
-          <span class="badge badge--solid">Clientes felices</span>
-          <h2 class="section__title" style="color: #0f172a;">Lo que dicen de nosotros</h2>
-          <p class="section__subtitle" style="color: #475569;">
-            Estudiantes, oficinistas y familias de Sucre ya piden sin filas.
-          </p>
-        </header>
-
-        <div class="testimonials__grid">
+        <div class="text-center">
+          <h2 class="section__title">Lo que dicen de nosotros</h2>
+          <p class="section__subtitle">Estudiantes, oficinistas y familias de Sucre ya piden sin filas.</p>
+        </div>
+        <div class="grid-3">
           <figure class="testimonial-card">
             <div class="testimonial-card__stars">★★★★★</div>
-            <blockquote>"Antes esperaba 20 minutos en la heladería. Ahora pido desde el celular y llego justo cuando está listo."</blockquote>
+            <blockquote>"Antes esperaba 20 minutos. Ahora pido desde el celular y llego justo cuando está listo."</blockquote>
             <figcaption>
-              <img src="https://i.pravatar.cc/100?img=5" alt="Andrea Rojas" loading="lazy" />
+              <img src="https://i.pravatar.cc/100?img=5" alt="Andrea">
               <div>
-                <p class="testimonial-card__name">Andrea Rojas</p>
-                <p class="testimonial-card__role">Estudiante universitaria</p>
+                <div class="testimonial-card__name">Andrea Rojas</div>
+                <div class="testimonial-card__role">Estudiante</div>
               </div>
             </figcaption>
           </figure>
-
           <figure class="testimonial-card">
             <div class="testimonial-card__stars">★★★★★</div>
-            <blockquote>"El pago con QR es súper rápido y puedo personalizar mi pastel sin azúcar. Excelente experiencia."</blockquote>
+            <blockquote>"El pago con QR es súper rápido y puedo personalizar mi pastel sin azúcar."</blockquote>
             <figcaption>
-              <img src="https://i.pravatar.cc/100?img=32" alt="Carla Méndez" loading="lazy" />
+              <img src="https://i.pravatar.cc/100?img=32" alt="Carla">
               <div>
-                <p class="testimonial-card__name">Carla Méndez</p>
-                <p class="testimonial-card__role">Cliente frecuente</p>
+                <div class="testimonial-card__name">Carla Méndez</div>
+                <div class="testimonial-card__role">Cliente frecuente</div>
               </div>
             </figcaption>
           </figure>
-
           <figure class="testimonial-card">
             <div class="testimonial-card__stars">★★★★★</div>
-            <blockquote>"Como cajero, el sistema me agiliza el cobro y no tengo que calcular montos a mano. Todo cuadra."</blockquote>
+            <blockquote>"Como cajero, el sistema me agiliza el cobro y no tengo que calcular montos a mano."</blockquote>
             <figcaption>
-              <img src="https://i.pravatar.cc/100?img=15" alt="Luis Fernández" loading="lazy" />
+              <img src="https://i.pravatar.cc/100?img=15" alt="Luis">
               <div>
-                <p class="testimonial-card__name">Luis Fernández</p>
-                <p class="testimonial-card__role">Cajero · DulceMania</p>
+                <div class="testimonial-card__name">Luis Fernández</div>
+                <div class="testimonial-card__role">Cajero</div>
               </div>
             </figcaption>
           </figure>
@@ -319,70 +503,55 @@
 
     <!-- ============ CTA FINAL ============ -->
     <section id="contacto" class="cta-banner">
-      <div class="container text-center">
-        <h2 class="cta-banner__title">Tu próximo antojo está a un clic 🍦</h2>
-        <p class="cta-banner__subtitle">
-          Pide en línea, recoge en tienda o recibe a domicilio. Sin filas, sin esperas.
-        </p>
-        <div class="cta-banner__actions">
-          <a href="/login.html" class="btn btn--white" id="ctaBannerLogin2">🛒 Pedir Ahora</a>
-          <a href="#menu" class="btn btn--ghost-white">🍨 Explorar Menú</a>
-        </div>
-      </div>
+      <h2>Tu próximo antojo está a un clic 🍦</h2>
+      <p>Pide en línea, recoge en tienda o recibe a domicilio. Sin filas, sin esperas.</p>
+      <a href="/login.html" class="btn btn--white" id="ctaBannerLogin2">🛒 Pedir Ahora</a>
     </section>
   </main>
 
   <!-- ============ FOOTER ============ -->
   <footer class="footer">
-    <div class="container footer__grid">
-      <div class="footer__brand">
-        <div class="footer__brand-title"><span>🍦</span><span>DulceMania</span></div>
-        <p class="footer__brand-text">
-          Sistema web de pedidos en línea de la Cafetería y Heladería Sucre. 
-          Pide tus favoritos sin filas ni esperas, con pagos variados y seguimiento en tiempo real.
-        </p>
-      </div>
-
-      <div class="footer__col">
-        <h4>Navegación</h4>
-        <ul>
-          <li><a href="#inicio">Inicio</a></li>
-          <li><a href="#menu">Menú</a></li>
-          <li><a href="#beneficios">Beneficios</a></li>
-          <li><a href="#como-funciona">Cómo Pedir</a></li>
-          <li><a href="#contacto">Contacto</a></li>
-        </ul>
-      </div>
-
-      <div class="footer__col">
-        <h4>Síguenos</h4>
-        <div class="footer__social">
-          <a href="#" aria-label="Facebook" class="social-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M22 12a10 10 0 10-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.7l-.4 2.9h-2.3v7A10 10 0 0022 12z"/></svg>
-          </a>
-          <a href="#" aria-label="Instagram" class="social-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.2c3.2 0 3.6 0 4.9.1 1.2.1 1.8.3 2.2.4.6.2 1 .5 1.4.9.4.4.7.8.9 1.4.2.4.4 1 .4 2.2.1 1.3.1 1.7.1 4.9s0 3.6-.1 4.9c-.1 1.2-.3 1.8-.4 2.2-.2.6-.5 1-.9 1.4-.4.4-.8.7-1.4.9-.4.2-1 .4-2.2.4-1.3.1-1.7.1-4.9.1s-3.6 0-4.9-.1c-1.2-.1-1.8-.3-2.2-.4-.6-.2-1-.5-1.4-.9-.4-.4-.7-.8-.9-1.4-.2-.4-.4-1-.4-2.2C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.9c.1-1.2.3-1.8.4-2.2.2-.6.5-1 .9-1.4.4-.4.8-.7 1.4-.9.4-.2 1-.4 2.2-.4C8.4 2.2 8.8 2.2 12 2.2zm0 4.8a5 5 0 100 10 5 5 0 000-10zm0 8.2a3.2 3.2 0 110-6.4 3.2 3.2 0 010 6.4zm6.4-8.4a1.2 1.2 0 11-2.4 0 1.2 1.2 0 012.4 0z"/></svg>
-          </a>
-          <a href="#" aria-label="TikTok" class="social-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M19.6 7.5a5.2 5.2 0 01-3.8-1.7v7.7a5.7 5.7 0 11-5.7-5.7c.3 0 .6 0 .9.1v2.9a2.8 2.8 0 102.3 2.8V2.5h2.9a5.2 5.2 0 003.4 5z"/></svg>
-          </a>
+    <div class="container">
+      <div class="footer__grid">
+        <div>
+          <div class="footer__brand-title">🍦 DulceMania</div>
+          <p class="footer__brand-text">Sistema web de pedidos en línea de la Cafetería y Heladería Sucre. Pide sin filas ni esperas.</p>
         </div>
-        <ul class="footer__legal">
-          <li><a href="#">Términos de Servicio</a></li>
-          <li><a href="#">Aviso de Privacidad</a></li>
-        </ul>
+        <div>
+          <h4>Navegación</h4>
+          <ul>
+            <li><a href="#inicio">Inicio</a></li>
+            <li><a href="#menu">Menú</a></li>
+            <li><a href="#beneficios">Beneficios</a></li>
+            <li><a href="#contacto">Contacto</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Contacto</h4>
+          <ul>
+            <li><a href="#">Sucre, Bolivia</a></li>
+            <li><a href="#">+591 70000000</a></li>
+            <li><a href="#">hola@dulcemania.com</a></li>
+          </ul>
+        </div>
       </div>
-    </div>
-
-    <div class="footer__bottom">
-      <p>© <span id="year"></span> DulceMania · Cafetería y Heladería Sucre. Hecho con 🍦 en Sucre, Bolivia.</p>
+      <div class="footer__bottom">
+        © <span id="year"></span> DulceMania · Cafetería y Heladería Sucre. Hecho con 🍦 en Bolivia.
+      </div>
     </div>
   </footer>
 
   <!-- ============ SCRIPTS ============ -->
-  <script src="/js/main.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/js/supabaseClient.js"></script>
   <script src="/js/landing-auth.js"></script>
+  <script>
+    // Lógica simple para el menú móvil
+    document.getElementById('menuBtn').addEventListener('click', () => {
+      document.getElementById('mobileMenu').classList.toggle('hidden');
+    });
+    // Año dinámico
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
 </body>
 </html>
