@@ -44,15 +44,50 @@
 
   function setDateLimits() {
     const dateInput = document.getElementById('scheduleDate');
-    if (!dateInput) return;
+    const timeInput = document.getElementById('scheduleTime');
+    if (!dateInput || !timeInput) return;
+
+    const now = new Date();
+    
+    // 1. Fecha de hoy formateada YYYY-MM-DD
+    const fmtDate = (d) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    // 2. Hora redondeada (siguiente media hora)
+    const fmtTime = (d) => {
+      let hours = d.getHours();
+      let minutes = d.getMinutes();
+      
+      if (minutes < 30) {
+        minutes = 30;
+      } else {
+        minutes = 0;
+        hours += 1;
+      }
+      
+      // Si pasa de las 23:59, ajustamos a mañana (pero como es solo hora, lo dejamos en 00:00)
+      if (hours >= 24) hours = 0;
+
+      const hh = String(hours).padStart(2, '0');
+      const mm = String(minutes).padStart(2, '0');
+      return `${hh}:${mm}`;
+    };
+
+    // 3. Calcular límites
     const today = new Date();
     const maxDate = new Date();
     maxDate.setDate(today.getDate() + 3);
 
-    const fmt = (d) => d.toISOString().split('T')[0];
-    dateInput.min = fmt(today);
-    dateInput.max = fmt(maxDate);
-    dateInput.value = fmt(today);
+    // 4. Autocompletar
+    dateInput.min = fmtDate(today);
+    dateInput.max = fmtDate(maxDate);
+    dateInput.value = fmtDate(today); // Fecha de hoy
+
+    timeInput.value = fmtTime(now);   // Hora actual o siguiente media hora
   }
 
   function initForm() {
