@@ -4,10 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="DulceMania — Sistema web de pedidos en línea de la Cafetería y Heladería Sucre. Ordena helados, pasteles, panes y bebidas sin esperas." />
-  <meta name="theme-color" content="#e11d48" />
-  <meta property="og:title" content="DulceMania 🍦 — Pedidos en línea" />
-  <meta property="og:description" content="Ordena tus favoritos sin filas. Recoge en tienda o pide a domicilio." />
-  <meta property="og:type" content="website" />
   <title>DulceMania 🍦 — Pedidos en línea | Cafetería y Heladería Sucre</title>
   
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
@@ -15,10 +11,36 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet" />
   
+  <!-- Cargamos el CSS base, pero lo sobreescribiremos con el bloque de abajo -->
   <link rel="stylesheet" href="/css/styles.css" />
   <link rel="stylesheet" href="/css/responsive.css" />
+
   <style>
-    html, body { background-color: #fff; } /* Landing es clara, el dashboard es oscuro */
+    /* ============================================
+       FORZAR TEMA CLARO EN LA LANDING Y ARREGLAR CONTRASTES
+       ============================================ */
+    html, body { background-color: #ffffff !important; color: #0f172a !important; }
+
+    /* Forzar que las tarjetas tengan fondo blanco y texto oscuro */
+    .value-card, .feature-card, .testimonial-card {
+      background-color: #f8fafc !important; /* Gris muy claro */
+      color: #0f172a !important;
+      border: 1px solid #e2e8f0 !important;
+    }
+    
+    .value-card h3, .feature-card h3, .testimonial-card__name {
+      color: #0f172a !important;
+    }
+    
+    .value-card p, .feature-card p, .testimonial-card blockquote, .testimonial-card__role {
+      color: #475569 !important;
+    }
+
+    /* Asegurar que los iconos del feature-card se vean bien */
+    .feature-card__icon {
+      background-color: #f43f5e !important;
+      color: #ffffff !important;
+    }
   </style>
 </head>
 <body>
@@ -41,7 +63,6 @@
         <li><a href="#contacto">Contacto</a></li>
       </ul>
 
-      <!-- Aquí JS inyectará los botones de Login/Panel -->
       <div class="navbar__actions" id="navActions">
         <a href="/login.html" class="btn btn--outline btn--sm">Iniciar Sesión</a>
       </div>
@@ -79,12 +100,12 @@
             Sin filas · Sin esperas · Pedidos listos
           </span>
 
-          <h1 class="hero__title">
+          <h1 class="hero__title" style="color: #0f172a;">
             Tu antojo,
             <span class="hero__title-accent">listo en minutos</span>
           </h1>
 
-          <p class="hero__subtitle">
+          <p class="hero__subtitle" style="color: #475569;">
             Pide tus helados, pasteles, panes y bebidas favoritas desde cualquier lugar. 
             Personaliza, paga con QR, tarjeta o efectivo, y recoge en tienda o recibe a domicilio.
           </p>
@@ -94,7 +115,7 @@
             <a href="#menu" class="btn btn--accent">🍨 Explorar Menú</a>
           </div>
 
-          <ul class="hero__checks">
+          <ul class="hero__checks" style="color: #475569;">
             <li><span class="check">✓</span> Pago QR, tarjeta o efectivo</li>
             <li><span class="check">✓</span> Recojo o delivery</li>
           </ul>
@@ -105,28 +126,28 @@
             <img src="https://images.unsplash.com/photo-1567206563064-6f60f40a2b57?auto=format&fit=crop&w=900&q=80" alt="Helados artesanales de DulceMania" loading="eager" />
           </div>
 
-          <div class="hero__card hero__card--bottom">
+          <div class="hero__card hero__card--bottom" style="background: #fff; color: #0f172a;">
             <div class="hero__card-icon">🛵</div>
             <div>
-              <p class="hero__card-label">Pedido en camino</p>
-              <p class="hero__card-value">Listo en 12 min</p>
+              <p class="hero__card-label" style="color: #64748b;">Pedido en camino</p>
+              <p class="hero__card-value" style="color: #0f172a;">Listo en 12 min</p>
             </div>
           </div>
 
-          <div class="hero__card hero__card--top animate-float">
-            <p class="hero__card-label">Pago confirmado</p>
-            <p class="hero__card-value">📱 QR · Bs. 45</p>
+          <div class="hero__card hero__card--top animate-float" style="background: #fff; color: #0f172a;">
+            <p class="hero__card-label" style="color: #64748b;">Pago confirmado</p>
+            <p class="hero__card-value" style="color: #0f172a;">📱 QR · Bs. 45</p>
           </div>
         </div>
       </div>
     </section>
 
     <!-- ============ PROPUESTA DE VALOR ============ -->
-    <section class="section value-prop">
+    <section class="section value-prop" style="background: #fff;">
       <div class="container container--narrow text-center">
         <span class="badge badge--solid">Nuestra misión</span>
-        <h2 class="section__title">Antójate sin hacer fila</h2>
-        <p class="section__subtitle">
+        <h2 class="section__title" style="color: #0f172a;">Antójate sin hacer fila</h2>
+        <p class="section__subtitle" style="color: #475569;">
           DulceMania nace para descongestionar la atención presencial de la Cafetería y Heladería Sucre. 
           Pide desde tu celular, personaliza tu pedido y elige cómo y cuándo recibirlo.
         </p>
@@ -152,19 +173,19 @@
     </section>
 
     <!-- ============ MENÚ (VISTA PREVIA) ============ -->
-    <section id="menu" class="section section--alt">
+    <section id="menu" class="section section--alt" style="background: #f8fafc;">
       <div class="container">
         <header class="section__header">
           <span class="badge badge--solid">Menú</span>
-          <h2 class="section__title">Todo lo que se te antoje</h2>
-          <p class="section__subtitle">
+          <h2 class="section__title" style="color: #0f172a;">Todo lo que se te antoje</h2>
+          <p class="section__subtitle" style="color: #475569;">
             Helados, pasteles, panes, bebidas y complementos. Disponibilidad en tiempo real.
           </p>
         </header>
 
         <div class="menu__grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem;">
           <!-- Tarjeta 1 -->
-          <article class="service-card" style="background:#fff; border-radius:1rem; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+          <article class="service-card" style="background:#fff; border-radius:1rem; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
             <div class="service-card__media" style="height:200px; overflow:hidden; position:relative;">
               <img src="https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?auto=format&fit=crop&w=600&q=80" alt="Helados" style="width:100%; height:100%; object-fit:cover;" />
               <span class="service-card__tag" style="position:absolute; top:1rem; left:1rem; background:#fff; padding:0.25rem 0.75rem; border-radius:99px; font-size:0.75rem; font-weight:700; color:#e11d48;">🍦 Helados</span>
@@ -176,7 +197,7 @@
           </article>
 
           <!-- Tarjeta 2 -->
-          <article class="service-card" style="background:#fff; border-radius:1rem; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+          <article class="service-card" style="background:#fff; border-radius:1rem; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
             <div class="service-card__media" style="height:200px; overflow:hidden; position:relative;">
               <img src="https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=600&q=80" alt="Pasteles" style="width:100%; height:100%; object-fit:cover;" />
               <span class="service-card__tag" style="position:absolute; top:1rem; left:1rem; background:#fff; padding:0.25rem 0.75rem; border-radius:99px; font-size:0.75rem; font-weight:700; color:#e11d48;">🎂 Pasteles</span>
@@ -188,7 +209,7 @@
           </article>
 
           <!-- Tarjeta 3 -->
-          <article class="service-card" style="background:#fff; border-radius:1rem; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+          <article class="service-card" style="background:#fff; border-radius:1rem; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
             <div class="service-card__media" style="height:200px; overflow:hidden; position:relative;">
               <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Bebidas" style="width:100%; height:100%; object-fit:cover;" />
               <span class="service-card__tag" style="position:absolute; top:1rem; left:1rem; background:#fff; padding:0.25rem 0.75rem; border-radius:99px; font-size:0.75rem; font-weight:700; color:#e11d48;">☕ Bebidas</span>
@@ -207,12 +228,12 @@
     </section>
 
     <!-- ============ BENEFICIOS ============ -->
-    <section id="beneficios" class="section">
+    <section id="beneficios" class="section" style="background: #fff;">
       <div class="container">
         <header class="section__header">
           <span class="badge badge--accent">Confianza y rapidez</span>
-          <h2 class="section__title">Por qué pedir en DulceMania</h2>
-          <p class="section__subtitle">
+          <h2 class="section__title" style="color: #0f172a;">Por qué pedir en DulceMania</h2>
+          <p class="section__subtitle" style="color: #475569;">
             Cada detalle está pensado para que pedir sea tan rico como comer.
           </p>
         </header>
@@ -246,12 +267,12 @@
     </section>
 
     <!-- ============ TESTIMONIOS ============ -->
-    <section class="section section--alt">
+    <section class="section section--alt" style="background: #f8fafc;">
       <div class="container">
         <header class="section__header">
           <span class="badge badge--solid">Clientes felices</span>
-          <h2 class="section__title">Lo que dicen de nosotros</h2>
-          <p class="section__subtitle">
+          <h2 class="section__title" style="color: #0f172a;">Lo que dicen de nosotros</h2>
+          <p class="section__subtitle" style="color: #475569;">
             Estudiantes, oficinistas y familias de Sucre ya piden sin filas.
           </p>
         </header>
@@ -359,7 +380,6 @@
   </footer>
 
   <!-- ============ SCRIPTS ============ -->
-  <!-- Mantenemos esta estructura para que landing-auth.js siga funcionando -->
   <script src="/js/main.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/js/supabaseClient.js"></script>
