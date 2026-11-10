@@ -1,12 +1,11 @@
 /* ============================================
-   STAFF.JS — Lógica del Panel de Cocina
+   STAFF.JS — Gestión de pedidos en tiempo real
    ============================================ */
 (function() {
   let allOrders = [];
-  let allOrderItems = []; // Para no hacer una petición por cada pedido
 
   document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Guard (solo admin y staff)
+    // 1. Guard (solo staff o admin)
     const profile = await window.guardPage(['staff', 'admin']);
     if (!profile) return;
 
@@ -18,152 +17,114 @@
     // 3. Logout
     document.getElementById('btnLogout').addEventListener('click', () => window.logoutUser());
 
-    // 4. Cargar datos iniciales
-    await loadData();
+    // 4. Cargar pedidos
+    await loadOrders();
 
-    // 5. Suscribirse a cambios en tiempo real
-    setupRealtime();
+    // 5. Configurar tiempo real (Realtime)
+    window.supabase
+      .channel('orders-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+        console.log('Cambio en pedido:', payload);
+        loadOrders(); // Recargar al detectar cambios
+      })
+      .subscribe();
   });
 
-  // --- CARGA DE DATOS ---
-  async function loadData() {
-    // Cargar pedidos activos (no entregados ni cancelados)
-    const { data: orders, error: ordersError } = await window.supabase
+  async function loadOrders() {
+    // Traemos solo los pedidos activos (no entregados/cancelados) con nombre del cliente
+    const { data, error } = await window.supabase
       .from('orders')
-      .select('*')
+      .select(`
+        *,
+        profiles:user_id (full_name)
+      `)
       .in('status', ['confirmado', 'en_preparacion', 'listo'])
-      .order('created_at', { ascending: true }); // Los más viejos primero
+      .order('created_at', { ascending: true });
 
-    if (ordersError) {
-      console.error('Error cargando pedidos:', ordersError);
+    if (error) {
+      console.error('Error cargando pedidos:', error);
       return;
     }
-    allOrders = orders || [];
 
-    // Cargar items de esos pedidos
-    if (allOrders.length > 0) {
-      const orderIds = allOrders.map(o => o.id);
-      const { data: items, error: itemsError } = await window.supabase
-        .from('order_items')
-        .select('*, products(name)')
-        .in('order_id', orderIds);
-
-      if (itemsError) {
-        console.error('Error cargando items:', itemsError);
-      } else {
-        allOrderItems = items || [];
-      }
-    }
-
+    allOrders = data || [];
     renderKanban();
   }
 
-  // --- RENDERIZADO DEL KANBAN ---
   function renderKanban() {
-    const columns = {
+    // Limpiar columnas
+    const cols = {
       confirmado: document.getElementById('col-confirmado'),
       en_preparacion: document.getElementById('col-en_preparacion'),
-      listo: document.getElementById('col-listo'),
+      listo: document.getElementById('col-listo')
+    };
+    
+    Object.values(cols).forEach(c => c.innerHTML = '');
+
+    // Agrupar
+    const groups = {
+      confirmado: allOrders.filter(o => o.status === 'confirmado'),
+      en_preparacion: allOrders.filter(o => o.status === 'en_preparacion'),
+      listo: allOrders.filter(o => o.status === 'listo'),
     };
 
-    // Limpiar columnas
-    Object.values(columns).forEach(col => col.innerHTML = '');
+    // Actualizar contadores
+    document.getElementById('countConfirmados').textContent = groups.confirmado.length;
+    document.getElementById('countPreparacion').textContent = groups.en_preparacion.length;
+    document.getElementById('countListo').textContent = groups.listo.length;
 
-    // Contadores
-    let counts = { confirmado: 0, en_preparacion: 0, listo: 0 };
-
-    // Clasificar pedidos
-    allOrders.forEach(order => {
-      counts[order.status]++;
-      const col = columns[order.status];
-      if (!col) return;
-
-      const orderItems = allOrderItems.filter(i => i.order_id === order.id);
-      col.innerHTML += createOrderCardHTML(order, orderItems);
-    });
-
-    // Actualizar contadores en UI
-    document.getElementById('count-confirmado').textContent = counts.confirmado;
-    document.getElementById('count-en_preparacion').textContent = counts.en_preparacion;
-    document.getElementById('count-listo').textContent = counts.listo;
-
-    // Mensajes de vacío
-    Object.keys(columns).forEach(status => {
-      if (counts[status] === 0) {
-        columns[status].innerHTML = `<div class="empty-state">No hay pedidos aquí.</div>`;
+    // Renderizar cada grupo
+    Object.keys(groups).forEach(status => {
+      const container = cols[status];
+      if (groups[status].length === 0) {
+        container.innerHTML = `<p class="empty-col">No hay pedidos aquí.</p>`;
+        return;
       }
+
+      container.innerHTML = groups[status].map(o => renderOrderCard(o)).join('');
     });
   }
 
-  function createOrderCardHTML(order, items) {
-    const time = new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  function renderOrderCard(o) {
+    const clientName = o.profiles?.full_name || 'Cliente';
+    const time = new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
-    const itemsHTML = items.map(item => 
-      `<li><strong>${item.quantity}x</strong> ${item.products?.name || 'Producto'} ${item.custom_notes ? `<em>(${item.custom_notes})</em>` : ''}</li>`
-    ).join('');
-
-    let actionsHTML = '';
-    if (order.status === 'confirmado') {
-      actionsHTML = `<button class="btn-action btn-prep" onclick="window.__updateStatus(${order.id}, 'en_preparacion')">Iniciar Preparación</button>`;
-    } else if (order.status === 'en_preparacion') {
-      actionsHTML = `<button class="btn-action btn-ready" onclick="window.__updateStatus(${order.id}, 'listo')">Marcar Listo</button>`;
-    } else if (order.status === 'listo') {
-      actionsHTML = `<button class="btn-action btn-done" onclick="window.__updateStatus(${order.id}, 'entregado')">Entregar</button>`;
+    let actionBtn = '';
+    if (o.status === 'confirmado') {
+      actionBtn = `<button class="btn-sm-action btn-prepare" onclick="window.__changeStatus(${o.id}, 'en_preparacion')">👨‍🍳 Preparar</button>`;
+    } else if (o.status === 'en_preparacion') {
+      actionBtn = `<button class="btn-sm-action btn-ready" onclick="window.__changeStatus(${o.id}, 'listo')">✅ Marcar Listo</button>`;
+    } else if (o.status === 'listo') {
+      actionBtn = `<button class="btn-sm-action btn-deliver" onclick="window.__changeStatus(${o.id}, 'entregado')">📦 Entregar</button>`;
     }
 
     return `
       <div class="order-card">
         <div class="order-card-header">
-          <span class="order-id">#${order.id}</span>
+          <span class="order-id">#${o.id}</span>
           <span class="order-time">${time}</span>
         </div>
-        <ul class="order-items-list">
-          ${itemsHTML || '<li>Sin detalles</li>'}
-        </ul>
-        ${order.delivery_type === 'domicilio' ? `<div class="order-notes">🛵 Delivery: ${order.delivery_address}</div>` : '<div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.5rem;">🏪 Recojo en tienda</div>'}
+        <div class="order-client">${clientName}</div>
+        <div class="order-details">
+          ${o.delivery_type === 'domicilio' ? '🛵 Domicilio' : '🏪 Recojo'} · 
+          ${o.payment_method.toUpperCase()}
+        </div>
+        <div class="order-total">Bs. ${o.total}</div>
         <div class="order-actions">
-          ${actionsHTML}
+          ${actionBtn}
         </div>
       </div>
     `;
   }
 
-  // --- ACTUALIZAR ESTADO ---
-  window.__updateStatus = async (orderId, newStatus) => {
-    // Buscar el botón y deshabilitarlo para evitar doble clic
-    const btns = document.querySelectorAll(`button[onclick*="__updateStatus(${orderId}"]`);
-    btns.forEach(b => { b.disabled = true; b.textContent = '...'; });
-
+  // Cambiar estado de un pedido
+  window.__changeStatus = async (orderId, newStatus) => {
     const { error } = await window.supabase
       .from('orders')
       .update({ status: newStatus })
       .eq('id', orderId);
 
     if (error) {
-      alert('Error actualizando el pedido: ' + error.message);
-      // Recargar para restaurar el estado visual
-      await loadData();
-    } else {
-      // Supabase Realtime se encargará de actualizar la UI automáticamente
-      // Pero por si acaso, recargamos localmente también
-      await loadData();
+      alert('Error al cambiar estado: ' + error.message);
     }
   };
-
-  // --- TIEMPO REAL (SUPABASE REALTIME) ---
-  function setupRealtime() {
-    // Escuchar cambios en la tabla 'orders'
-    window.supabase
-      .channel('public:orders')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'orders' },
-        (payload) => {
-          console.log('Cambio en tiempo real:', payload);
-          // Si un pedido se crea, actualiza o elimina, recargamos los datos
-          loadData();
-        }
-      )
-      .subscribe();
-  }
 })();

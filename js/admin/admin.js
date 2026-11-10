@@ -62,24 +62,30 @@
       document.getElementById('metricProducts').textContent = active;
     }
 
-    // Últimos 5 pedidos
-    const { data: recent } = await window.supabase
+    // Últimos 5 pedidos con nombre
+    const { data: recent, error: recentError } = await window.supabase
       .from('orders')
-      .select('id, total, status, created_at, user_id')
+      .select(`
+        id, total, status, created_at,
+        profiles:user_id (full_name)
+      `)
       .order('created_at', { ascending: false })
       .limit(5);
       
     const tbody = document.getElementById('recentOrdersTable');
     if (recent && recent.length > 0) {
-      tbody.innerHTML = recent.map(o => `
-        <tr>
-          <td>#${o.id}</td>
-          <td>${o.user_id.substring(0, 8)}...</td>
-          <td>Bs. ${o.total}</td>
-          <td><span class="status-badge status-${o.status}">${o.status}</span></td>
-          <td>${new Date(o.created_at).toLocaleDateString()}</td>
-        </tr>
-      `).join('');
+      tbody.innerHTML = recent.map(o => {
+        const clientName = o.profiles?.full_name || 'Cliente';
+        return `
+          <tr>
+            <td>#${o.id}</td>
+            <td>${clientName}</td>
+            <td>Bs. ${o.total}</td>
+            <td><span class="status-badge status-${o.status}">${o.status}</span></td>
+            <td>${new Date(o.created_at).toLocaleDateString()}</td>
+          </tr>
+        `;
+      }).join('');
     } else {
       tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No hay pedidos recientes.</td></tr>`;
     }
@@ -117,28 +123,43 @@
 
   // --- PEDIDOS ---
   async function loadOrders() {
+    // Hacemos un JOIN con 'profiles' para traer el nombre del cliente
     const { data, error } = await window.supabase
       .from('orders')
-      .select('*')
+      .select(`
+        *,
+        profiles:user_id (full_name)
+      `)
       .order('created_at', { ascending: false });
       
     const tbody = document.getElementById('allOrdersTable');
-    if (error || !data || data.length === 0) {
+    if (error) {
+      console.error('Error cargando pedidos:', error);
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">Error al cargar pedidos.</td></tr>`;
+      return;
+    }
+
+    if (!data || data.length === 0) {
       tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">No hay pedidos.</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = data.map(o => `
-      <tr>
-        <td>#${o.id}</td>
-        <td>${o.user_id.substring(0, 8)}...</td>
-        <td style="text-transform:capitalize;">${o.delivery_type}</td>
-        <td style="text-transform:capitalize;">${o.payment_method}</td>
-        <td>Bs. ${o.total}</td>
-        <td><span class="status-badge status-${o.status}">${o.status}</span></td>
-        <td>${new Date(o.created_at).toLocaleDateString()}</td>
-      </tr>
-    `).join('');
+    tbody.innerHTML = data.map(o => {
+      // Extraer nombre del join, o usar 'Cliente' si falla
+      const clientName = o.profiles?.full_name || 'Cliente Anónimo';
+      
+      return `
+        <tr>
+          <td>#${o.id}</td>
+          <td>${clientName}</td>
+          <td style="text-transform:capitalize;">${o.delivery_type}</td>
+          <td style="text-transform:capitalize;">${o.payment_method}</td>
+          <td>Bs. ${o.total}</td>
+          <td><span class="status-badge status-${o.status}">${o.status}</span></td>
+          <td>${new Date(o.created_at).toLocaleDateString()}</td>
+        </tr>
+      `;
+    }).join('');
   }
 
   // --- MODAL PRODUCTOS ---

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Panel de Cocina — DulceMania 🍦</title>
+  <title>Panel Staff — DulceMania 🍦</title>
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -13,116 +13,80 @@
   <style>
     @keyframes spin { 100% { transform: rotate(360deg); } }
     
-    /* Estilos específicos del Staff (Kanban) */
-    .kanban-board {
+    .kanban-grid {
       display: grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
       gap: 1.5rem;
-      margin-top: 2rem;
+      align-items: start;
     }
-    @media (min-width: 900px) {
-      .kanban-board { grid-template-columns: repeat(3, 1fr); align-items: start; }
-    }
-
     .kanban-col {
-      background: #0b1120;
+      background: var(--card-dark);
       border-radius: 1rem;
-      padding: 1rem;
       border: 1px solid var(--border-dark);
-      min-height: 200px;
+      padding: 1rem;
     }
-    .kanban-col-header {
+    .kanban-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 1rem;
       padding-bottom: 0.75rem;
-      border-bottom: 1px solid var(--border-dark);
+      border-bottom: 2px solid var(--border-dark);
     }
-    .kanban-col-title {
-      font-weight: 700;
-      font-size: 1.1rem;
-      color: var(--text-main);
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
+    .kanban-title { font-weight: 800; color: var(--text-main); font-size: 1rem; }
+    .kanban-count { 
+      background: var(--border-dark); 
+      color: var(--text-main); 
+      font-size: 0.75rem; 
+      font-weight: 700; 
+      padding: 2px 8px; 
+      border-radius: 99px; 
     }
-    .kanban-count {
-      background: var(--card-dark);
-      color: var(--text-muted);
-      font-size: 0.8rem;
-      padding: 2px 8px;
-      border-radius: 99px;
-      font-weight: 700;
-    }
-
-    /* Tarjetas de Pedido */
+    
     .order-card {
-      background: var(--card-dark);
+      background: #0b1120;
       border-radius: 0.75rem;
       padding: 1rem;
-      margin-bottom: 1rem;
+      margin-bottom: 0.75rem;
       border: 1px solid var(--border-dark);
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-      animation: fadeIn 0.3s ease;
+      transition: transform 0.2s, border-color 0.2s;
     }
-    .order-card-header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 0.5rem;
-    }
+    .order-card:hover { border-color: var(--brand-500); transform: translateY(-2px); }
+    .order-card-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem; }
     .order-id { font-weight: 800; color: var(--brand-500); }
     .order-time { font-size: 0.75rem; color: var(--text-muted); }
+    .order-client { font-weight: 600; color: var(--text-main); font-size: 0.9rem; margin-bottom: 0.25rem; }
+    .order-details { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+    .order-total { font-weight: 700; color: var(--text-main); margin-bottom: 0.75rem; }
     
-    .order-items-list {
-      font-size: 0.85rem;
-      color: var(--text-main);
-      margin-bottom: 0.75rem;
-      padding-left: 1rem;
-      list-style-type: disc;
-    }
-    .order-items-list li { margin-bottom: 0.25rem; }
-    
-    .order-notes {
-      font-size: 0.8rem;
-      background: rgba(245, 158, 11, 0.1);
-      color: #fcd34d;
-      padding: 0.5rem;
-      border-radius: 0.5rem;
-      margin-bottom: 0.75rem;
-      border-left: 3px solid var(--accent-500);
-    }
-
-    .order-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
-    .btn-action {
+    .order-actions { display: flex; gap: 0.5rem; }
+    .btn-sm-action {
       flex: 1;
       padding: 0.5rem;
+      border-radius: 6px;
       border: none;
-      border-radius: 0.5rem;
       font-weight: 700;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       cursor: pointer;
       transition: 0.2s;
     }
-    .btn-prep { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
-    .btn-prep:hover { background: rgba(245, 158, 11, 0.3); }
+    .btn-prepare { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
+    .btn-prepare:hover { background: rgba(245, 158, 11, 0.3); }
     .btn-ready { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
     .btn-ready:hover { background: rgba(16, 185, 129, 0.3); }
-    .btn-done { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
-    .btn-done:hover { background: rgba(148, 163, 184, 0.3); }
-    
-    .empty-state { text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 2rem 0; }
+    .btn-deliver { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
+    .btn-deliver:hover { background: rgba(148, 163, 184, 0.3); }
+
+    .empty-col { text-align: center; color: var(--text-muted); padding: 2rem 0; font-size: 0.85rem; }
   </style>
 </head>
 <body class="dashboard-body">
 
-  <!-- PANTALLA DE CARGA -->
   <div id="appLoader" style="position:fixed;inset:0;background:#0f172a;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;">
-    <div style="font-size:3rem;animation:spin 1s linear infinite;">👨‍🍳</div>
-    <p style="font-weight:600;color:#94a3b8;">Cargando Panel de Cocina...</p>
+    <div style="font-size:3rem;animation:spin 1s linear infinite;">🍦</div>
+    <p style="font-weight:600;color:#94a3b8;">Cargando Panel Staff...</p>
   </div>
 
-  <!-- CONTENIDO -->
   <div id="appWrapper" style="display:none;">
     
     <header class="dash-navbar">
@@ -130,7 +94,7 @@
         <a href="/index.html" class="dash-brand">
           <span class="dash-brand-icon">🍦</span>
           <span class="dash-brand-text">Dulce<span class="dash-brand-accent">Mania</span></span>
-          <span style="font-size:0.75rem;background:var(--accent-500);color:#000;padding:2px 8px;border-radius:99px;margin-left:8px;">STAFF</span>
+          <span style="font-size:0.75rem;background:var(--accent-500);color:#000;padding:2px 8px;border-radius:99px;margin-left:8px;font-weight:800;">STAFF</span>
         </a>
         <div class="dash-user">
           <span id="userName" class="dash-user-name">Staff</span>
@@ -140,52 +104,43 @@
     </header>
 
     <main class="container dash-main">
-      <section class="dash-header" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:1rem;">
-        <div>
-          <h1 class="dash-title">Panel de Cocina y Caja</h1>
-          <p class="dash-subtitle">Gestiona los pedidos entrantes en tiempo real.</p>
-        </div>
-        <div style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;color:var(--text-muted);">
-          <span style="width:10px;height:10px;border-radius:50%;background:#10b981;display:inline-block;animation:pulse 2s infinite;"></span>
-          Conectado en tiempo real
-        </div>
+      <section class="dash-header">
+        <h1 class="dash-title">Panel de Cocina y Caja</h1>
+        <p class="dash-subtitle">Gestiona los pedidos en tiempo real.</p>
       </section>
 
-      <!-- KANBAN BOARD -->
-      <div class="kanban-board">
-        
-        <!-- Columna: Confirmados -->
+      <div class="kanban-grid">
+        <!-- COLUMNA: CONFIRMADOS -->
         <div class="kanban-col">
-          <div class="kanban-col-header">
-            <span class="kanban-col-title">🔵 Confirmados</span>
-            <span class="kanban-count" id="count-confirmado">0</span>
+          <div class="kanban-header">
+            <span class="kanban-title">🔵 Nuevos Pedidos</span>
+            <span class="kanban-count" id="countConfirmados">0</span>
           </div>
           <div id="col-confirmado"></div>
         </div>
 
-        <!-- Columna: En Preparación -->
+        <!-- COLUMNA: EN PREPARACIÓN -->
         <div class="kanban-col">
-          <div class="kanban-col-header">
-            <span class="kanban-col-title">🟡 En Preparación</span>
-            <span class="kanban-count" id="count-en_preparacion">0</span>
+          <div class="kanban-header">
+            <span class="kanban-title">🟡 En Preparación</span>
+            <span class="kanban-count" id="countPreparacion">0</span>
           </div>
           <div id="col-en_preparacion"></div>
         </div>
 
-        <!-- Columna: Listos -->
+        <!-- COLUMNA: LISTOS -->
         <div class="kanban-col">
-          <div class="kanban-col-header">
-            <span class="kanban-col-title">🟢 Listos</span>
-            <span class="kanban-count" id="count-listo">0</span>
+          <div class="kanban-header">
+            <span class="kanban-title">🟢 Listos para Entregar</span>
+            <span class="kanban-count" id="countListo">0</span>
           </div>
           <div id="col-listo"></div>
         </div>
-
       </div>
+
     </main>
   </div>
 
-  <!-- SCRIPTS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/js/supabaseClient.js"></script>
   <script src="/js/staff/staff.js"></script>
