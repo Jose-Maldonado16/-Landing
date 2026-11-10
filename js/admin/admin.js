@@ -3,6 +3,7 @@
    ============================================ */
 (function() {
   let allProducts = [];
+  let allOrders = [];
 
   document.addEventListener('DOMContentLoaded', async () => {
     // 1. Guard (solo admin)
@@ -25,8 +26,9 @@
     await loadProducts();
     await loadOrders();
 
-    // 6. Configurar modal de productos
+    // 6. Configurar modales
     initProductModal();
+    initOrderDetailModal();
   });
 
   // --- TABS ---
@@ -44,31 +46,25 @@
 
   // --- DASHBOARD METRICS ---
   async function loadDashboardMetrics() {
-    // Ventas totales
     const { data: orders } = await window.supabase.from('orders').select('total, created_at');
     if (orders) {
       const totalSales = orders.reduce((sum, o) => sum + Number(o.total), 0);
       document.getElementById('metricSales').textContent = `Bs. ${totalSales.toFixed(2)}`;
-      
       const today = new Date().toISOString().split('T')[0];
       const ordersToday = orders.filter(o => o.created_at.startsWith(today)).length;
       document.getElementById('metricOrders').textContent = ordersToday;
     }
 
-    // Productos activos
     const { data: products } = await window.supabase.from('products').select('id, is_available');
     if (products) {
       const active = products.filter(p => p.is_available).length;
       document.getElementById('metricProducts').textContent = active;
     }
 
-    // Últimos 5 pedidos con nombre
-    const { data: recent, error: recentError } = await window.supabase
+    // Últimos 5 pedidos
+    const { data: recent } = await window.supabase
       .from('orders')
-      .select(`
-        id, total, status, created_at,
-        profiles:user_id (full_name)
-      `)
+      .select(`id, total, status, created_at, profiles:user_id (full_name)`)
       .order('created_at', { ascending: false })
       .limit(5);
       
@@ -94,10 +90,7 @@
   // --- PRODUCTOS ---
   async function loadProducts() {
     const { data, error } = await window.supabase.from('products').select('*').order('id');
-    if (error) {
-      console.error(error);
-      return;
-    }
+    if (error) return;
     allProducts = data || [];
     
     const tbody = document.getElementById('productsTable');
@@ -123,31 +116,20 @@
 
   // --- PEDIDOS ---
   async function loadOrders() {
-    // Hacemos un JOIN con 'profiles' para traer el nombre del cliente
     const { data, error } = await window.supabase
       .from('orders')
-      .select(`
-        *,
-        profiles:user_id (full_name)
-      `)
+      .select(`*, profiles:user_id (full_name)`)
       .order('created_at', { ascending: false });
       
     const tbody = document.getElementById('allOrdersTable');
-    if (error) {
-      console.error('Error cargando pedidos:', error);
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">Error al cargar pedidos.</td></tr>`;
+    if (error || !data || data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">No hay pedidos.</td></tr>`;
       return;
     }
-
-    if (!data || data.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">No hay pedidos.</td></tr>`;
-      return;
-    }
+    allOrders = data;
 
     tbody.innerHTML = data.map(o => {
-      // Extraer nombre del join, o usar 'Cliente' si falla
-      const clientName = o.profiles?.full_name || 'Cliente Anónimo';
-      
+      const clientName = o.profiles?.full_name || 'Cliente';
       return `
         <tr>
           <td>#${o.id}</td>
@@ -157,12 +139,13 @@
           <td>Bs. ${o.total}</td>
           <td><span class="status-badge status-${o.status}">${o.status}</span></td>
           <td>${new Date(o.created_at).toLocaleDateString()}</td>
+          <td><button class="action-btn btn-edit" onclick="window.__viewOrderDetail(${o.id})">Ver</button></td>
         </tr>
       `;
     }).join('');
   }
 
-  // --- MODAL PRODUCTOS ---
+  // --- MODAL DE PRODUCTOS ---
   function initProductModal() {
     const modal = document.getElementById('productModal');
     const form = document.getElementById('productForm');
@@ -194,11 +177,9 @@
 
       let error;
       if (id) {
-        // Actualizar
         const res = await window.supabase.from('products').update(productData).eq('id', id);
         error = res.error;
       } else {
-        // Crear
         const res = await window.supabase.from('products').insert([productData]);
         error = res.error;
       }
@@ -213,11 +194,78 @@
     });
   }
 
-  // --- ACCIONES GLOBALES (para los onclick inline) ---
+  // --- MODAL DE DETALLES DEL PEDIDO ---
+  function initOrderDetailModal() {
+    document.getElementById('btnCloseDetail').addEventListener('click', () => {
+      document.getElementById('orderDetailModal').classList.remove('active');
+    });
+  }
+
+  window.__viewOrderDetail = async (orderId) => {
+    const modal = document.getElementById('orderDetailModal');
+    document.getElementById('detailOrderTitle').textContent = `Pedido #${orderId}`;
+    document.getElementById('detailOrderInfo').innerHTML = '<p>Cargando...</p>';
+    document.getElementById('detailOrderItems').innerHTML = '';
+    document.getElementById('detailOrderNotes').innerHTML = '';
+    modal.classList.add('active');
+
+    // 1. Obtener cabecera del pedido
+    const order = allOrders.find(o => o.id === orderId);
+    if (!order) return;
+
+    const clientName = order.profiles?.full_name || 'Cliente';
+    const deliveryText = order.delivery_type === 'domicilio' ? '🛵 Domicilio' : '🏪 Recojo';
+    const paymentText = order.payment_method.toUpperCase();
+
+    document.getElementById('detailOrderInfo').innerHTML = `
+      <p style="margin-bottom:0.25rem;"><strong>Cliente:</strong> ${clientName}</p>
+      <p style="margin-bottom:0.25rem;"><strong>Entrega:</strong> ${deliveryText} ${order.delivery_address ? `- ${order.delivery_address}` : ''}</p>
+      <p style="margin-bottom:0.25rem;"><strong>Pago:</strong> ${paymentText}</p>
+      <p style="margin-bottom:0.25rem;"><strong>Fecha programada:</strong> ${new Date(order.scheduled_time).toLocaleString()}</p>
+      <p><strong>Estado:</strong> <span class="status-badge status-${order.status}">${order.status}</span></p>
+    `;
+
+    // 2. Obtener los items del pedido
+    const { data: items, error } = await window.supabase
+      .from('order_items')
+      .select(`*, products:product_id (name)`)
+      .eq('order_id', orderId);
+
+    if (error) {
+      document.getElementById('detailOrderItems').innerHTML = `<p style="color:red;">Error al cargar items.</p>`;
+      return;
+    }
+
+    if (!items || items.length === 0) {
+      document.getElementById('detailOrderItems').innerHTML = `<p>No hay items registrados.</p>`;
+    } else {
+      let totalCalculado = 0;
+      document.getElementById('detailOrderItems').innerHTML = items.map(i => {
+        totalCalculado += Number(i.subtotal);
+        const productName = i.products?.name || 'Producto';
+        return `
+          <div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid var(--border-dark);">
+            <div>
+              <strong>${productName}</strong>
+              <div style="font-size:0.85rem; color:var(--text-muted);">${i.quantity} x Bs. ${i.unit_price}</div>
+            </div>
+            <div style="font-weight:700;">Bs. ${i.subtotal}</div>
+          </div>
+          ${i.custom_notes ? `<div style="font-size:0.8rem; color:var(--accent-500); margin-top:0.25rem;">📝 ${i.custom_notes}</div>` : ''}
+        `;
+      }).join('') + `
+        <div style="display:flex; justify-content:space-between; margin-top:1rem; padding-top:0.5rem; border-top:2px solid var(--border-dark); font-weight:800; font-size:1.1rem;">
+          <span>Total</span>
+          <span style="color:var(--brand-500);">Bs. ${totalCalculado.toFixed(2)}</span>
+        </div>
+      `;
+    }
+  };
+
+  // --- ACCIONES DE PRODUCTOS ---
   window.__editProduct = (id) => {
     const p = allProducts.find(prod => prod.id === id);
     if (!p) return;
-    
     document.getElementById('prodId').value = p.id;
     document.getElementById('prodName').value = p.name;
     document.getElementById('prodDesc').value = p.description || '';
@@ -225,20 +273,14 @@
     document.getElementById('prodCategory').value = p.category;
     document.getElementById('prodStock').value = p.stock;
     document.getElementById('prodImage').value = p.image_url || '';
-    
     document.getElementById('modalTitle').textContent = 'Editar Producto';
     document.getElementById('productModal').classList.add('active');
   };
 
   window.__deleteProduct = async (id) => {
-    if (!confirm('¿Estás seguro de eliminar este producto?')) return;
-    
+    if (!confirm('¿Eliminar este producto?')) return;
     const { error } = await window.supabase.from('products').delete().eq('id', id);
-    if (error) {
-      alert('Error al eliminar: ' + error.message);
-    } else {
-      await loadProducts();
-      await loadDashboardMetrics();
-    }
+    if (error) alert('Error: ' + error.message);
+    else { await loadProducts(); await loadDashboardMetrics(); }
   };
 })();

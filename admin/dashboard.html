@@ -13,10 +13,9 @@
   
   <style>
     @keyframes spin { 100% { transform: rotate(360deg); } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     
-    /* ============================================
-       ESTILOS ESPECÍFICOS DEL ADMIN (DARK MODE)
-       ============================================ */
+    /* ESTILOS ESPECÍFICOS DEL ADMIN (DARK MODE) */
     .admin-tabs { 
       display: flex; 
       gap: 0.5rem; 
@@ -41,7 +40,6 @@
     .tab-content { display: none; animation: fadeIn 0.3s ease; }
     .tab-content.active { display: block; }
     
-    /* Métricas */
     .metrics-grid { 
       display: grid; 
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
@@ -69,7 +67,6 @@
       margin-top: 0.5rem; 
     }
     
-    /* Tablas */
     .data-table-wrapper { 
       background: var(--card-dark); 
       border-radius: 1rem; 
@@ -98,7 +95,6 @@
       object-fit: cover; 
     }
     
-    /* Botones de acción */
     .action-btn { 
       padding: 0.4rem 0.8rem; 
       border-radius: 6px; 
@@ -108,18 +104,13 @@
       cursor: pointer; 
       transition: 0.2s; 
     }
-    .btn-edit { 
-      background: rgba(59, 130, 246, 0.2); 
-      color: #93c5fd; 
-    }
+    .btn-edit { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
     .btn-edit:hover { background: rgba(59, 130, 246, 0.3); }
-    .btn-delete { 
-      background: rgba(239, 68, 68, 0.2); 
-      color: #fca5a5; 
-    }
+    .btn-delete { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
     .btn-delete:hover { background: rgba(239, 68, 68, 0.3); }
-    
-    /* Modal */
+    .btn-view { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+    .btn-view:hover { background: rgba(16, 185, 129, 0.3); }
+
     .modal-overlay { 
       position: fixed; 
       inset: 0; 
@@ -156,9 +147,7 @@
       color: var(--text-muted); 
       margin-bottom: 0.35rem; 
     }
-    .form-group input, 
-    .form-group select, 
-    .form-group textarea { 
+    .form-group input, .form-group select, .form-group textarea { 
       width: 100%; 
       padding: 0.65rem; 
       border: 1px solid var(--border-dark); 
@@ -167,14 +156,11 @@
       background: #0b1120; 
       color: var(--text-main); 
     }
-    .form-group input:focus, 
-    .form-group select:focus, 
-    .form-group textarea:focus { 
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { 
       outline: none; 
       border-color: var(--brand-500); 
     }
     
-    /* Badges de estado */
     .status-badge { 
       padding: 4px 10px; 
       border-radius: 99px; 
@@ -271,8 +257,8 @@
         <h3 style="font-weight:700;margin-bottom:1.5rem;color:var(--text-main);">Todos los Pedidos</h3>
         <div class="data-table-wrapper">
           <table class="data-table">
-            <thead><tr><th>ID</th><th>Cliente</th><th>Entrega</th><th>Pago</th><th>Total</th><th>Estado</th><th>Fecha</th></tr></thead>
-            <tbody id="allOrdersTable"><tr><td colspan="7" style="text-align:center;padding:2rem;">Cargando...</td></tr></tbody>
+            <thead><tr><th>ID</th><th>Cliente</th><th>Entrega</th><th>Pago</th><th>Total</th><th>Estado</th><th>Fecha</th><th>Detalle</th></tr></thead>
+            <tbody id="allOrdersTable"><tr><td colspan="8" style="text-align:center;padding:2rem;">Cargando...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -306,6 +292,18 @@
           <button type="submit" class="btn btn--primary" style="flex:1;">Guardar</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL PARA DETALLES DE PEDIDO -->
+  <div id="orderDetailModal" class="modal-overlay">
+    <div class="modal-box">
+      <h2 id="detailOrderTitle">Pedido #--</h2>
+      <div id="detailOrderInfo" style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-dark);"></div>
+      <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-main);">Productos:</h3>
+      <div id="detailOrderItems" style="margin-bottom: 1.5rem;"></div>
+      <div id="detailOrderNotes" style="margin-bottom: 1.5rem;"></div>
+      <button type="button" id="btnCloseDetail" class="btn btn--primary" style="width: 100%;">Cerrar</button>
     </div>
   </div>
 
