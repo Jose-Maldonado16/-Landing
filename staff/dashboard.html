@@ -10,9 +10,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Pacifico&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/styles.css" />
   <link rel="stylesheet" href="/css/dashboard.css" />
+  
   <style>
     @keyframes spin { 100% { transform: rotate(360deg); } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     
+    /* ============================================
+       ESTILOS ESPECÍFICOS DEL STAFF (DARK MODE)
+       ============================================ */
     .kanban-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -24,6 +29,7 @@
       border-radius: 1rem;
       border: 1px solid var(--border-dark);
       padding: 1rem;
+      animation: fadeIn 0.4s ease;
     }
     .kanban-header {
       display: flex;
@@ -50,6 +56,7 @@
       margin-bottom: 0.75rem;
       border: 1px solid var(--border-dark);
       transition: transform 0.2s, border-color 0.2s;
+      cursor: pointer;
     }
     .order-card:hover { border-color: var(--brand-500); transform: translateY(-2px); }
     .order-card-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem; }
@@ -58,6 +65,7 @@
     .order-client { font-weight: 600; color: var(--text-main); font-size: 0.9rem; margin-bottom: 0.25rem; }
     .order-details { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; }
     .order-total { font-weight: 700; color: var(--text-main); margin-bottom: 0.75rem; }
+    .order-hint { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.5rem; }
     
     .order-actions { display: flex; gap: 0.5rem; }
     .btn-sm-action {
@@ -76,17 +84,47 @@
     .btn-ready:hover { background: rgba(16, 185, 129, 0.3); }
     .btn-deliver { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
     .btn-deliver:hover { background: rgba(148, 163, 184, 0.3); }
+    .btn-pay { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+    .btn-pay:hover { background: rgba(59, 130, 246, 0.3); }
 
     .empty-col { text-align: center; color: var(--text-muted); padding: 2rem 0; font-size: 0.85rem; }
+    
+    /* Modal */
+    .modal-overlay { 
+      position: fixed; inset: 0; background: rgba(0,0,0,0.8); 
+      backdrop-filter: blur(4px); z-index: 1000; display: none; 
+      align-items: center; justify-content: center; padding: 1rem; 
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-box { 
+      background: var(--card-dark); border-radius: 1rem; padding: 2rem; 
+      width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; 
+      border: 1px solid var(--border-dark); 
+    }
+    .modal-box h2 { 
+      margin-bottom: 1.5rem; font-size: 1.25rem; font-weight: 800; color: var(--text-main); 
+    }
+    
+    .status-badge { 
+      padding: 4px 10px; border-radius: 99px; font-size: 0.75rem; font-weight: 700; 
+      text-transform: capitalize; 
+    }
+    .status-pendiente_pago { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+    .status-confirmado { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+    .status-en_preparacion { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
+    .status-listo { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+    .status-entregado { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
   </style>
 </head>
 <body class="dashboard-body">
 
- <div id="appLoader" style="position:fixed;inset:0;background:#0f172a;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;">
+  <!-- PANTALLA DE CARGA -->
+  <div id="appLoader" style="position:fixed;inset:0;background:#0f172a;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;">
     <div style="font-size:3rem;animation:spin 1s linear infinite;">🍦</div>
     <p style="font-weight:600;color:#94a3b8;">Cargando Panel Staff...</p>
   </div>
 
+  <!-- CONTENIDO -->
   <div id="appWrapper" style="display:none;">
     
     <header class="dash-navbar">
@@ -94,7 +132,7 @@
         <a href="/index.html" class="dash-brand">
           <span class="dash-brand-icon">🍦</span>
           <span class="dash-brand-text">Dulce<span class="dash-brand-accent">Mania</span></span>
-          <span style="font-size:0.75rem;background:var(--accent-500);color:#000;padding:2px 8px;border-radius:99px;margin-left:8px;font-weight:800;">STAFF</span>
+          <span id="roleBadge" style="font-size:0.75rem;background:var(--accent-500);color:#000;padding:2px 8px;border-radius:99px;margin-left:8px;font-weight:800;">STAFF</span>
         </a>
         <div class="dash-user">
           <span id="userName" class="dash-user-name">Staff</span>
@@ -105,13 +143,22 @@
 
     <main class="container dash-main">
       <section class="dash-header">
-        <h1 class="dash-title">Panel de Cocina y Caja</h1>
-        <p class="dash-subtitle">Gestiona los pedidos en tiempo real.</p>
+        <h1 class="dash-title" id="pageTitle">Panel de Cocina y Caja</h1>
+        <p class="dash-subtitle" id="pageSubtitle">Gestiona los pedidos en tiempo real.</p>
       </section>
 
-      <div class="kanban-grid">
-        <!-- COLUMNA: CONFIRMADOS -->
-        <div class="kanban-col">
+      <div class="kanban-grid" id="kanbanGrid">
+        <!-- COLUMNA: PENDIENTES DE PAGO (Solo Cajero) -->
+        <div class="kanban-col" data-role="cashier" id="colPendientePago" style="display:none;">
+          <div class="kanban-header">
+            <span class="kanban-title">💳 Pendientes de Pago</span>
+            <span class="kanban-count" id="countPendientePago">0</span>
+          </div>
+          <div id="col-pendiente_pago"></div>
+        </div>
+
+        <!-- COLUMNA: NUEVOS (Solo Cajero para confirmar pago) -->
+        <div class="kanban-col" data-role="cashier" id="colConfirmado" style="display:none;">
           <div class="kanban-header">
             <span class="kanban-title">🔵 Nuevos Pedidos</span>
             <span class="kanban-count" id="countConfirmados">0</span>
@@ -119,8 +166,8 @@
           <div id="col-confirmado"></div>
         </div>
 
-        <!-- COLUMNA: EN PREPARACIÓN -->
-        <div class="kanban-col">
+        <!-- COLUMNA: EN PREPARACIÓN (Cocina) -->
+        <div class="kanban-col" data-role="kitchen" id="colPreparacion" style="display:none;">
           <div class="kanban-header">
             <span class="kanban-title">🟡 En Preparación</span>
             <span class="kanban-count" id="countPreparacion">0</span>
@@ -128,8 +175,8 @@
           <div id="col-en_preparacion"></div>
         </div>
 
-        <!-- COLUMNA: LISTOS -->
-        <div class="kanban-col">
+        <!-- COLUMNA: LISTOS (Ambos roles) -->
+        <div class="kanban-col" data-role="both" id="colListo" style="display:none;">
           <div class="kanban-header">
             <span class="kanban-title">🟢 Listos para Entregar</span>
             <span class="kanban-count" id="countListo">0</span>
@@ -141,6 +188,18 @@
     </main>
   </div>
 
+  <!-- MODAL DE DETALLE DE PEDIDO -->
+  <div id="orderDetailModal" class="modal-overlay">
+    <div class="modal-box">
+      <h2 id="detailOrderTitle">Pedido #--</h2>
+      <div id="detailOrderInfo" style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-dark);"></div>
+      <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-main);">Productos a preparar:</h3>
+      <div id="detailOrderItems" style="margin-bottom: 1.5rem;"></div>
+      <button type="button" id="btnCloseDetail" class="btn btn--primary" style="width: 100%;">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- SCRIPTS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/js/supabaseClient.js"></script>
   <script src="/js/staff/staff.js"></script>
