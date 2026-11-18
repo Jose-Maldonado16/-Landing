@@ -1,6 +1,6 @@
 /* ============================================
    STAFF.JS — Separación total de roles
-   (Cocina vs Cajero)
+   (Cocina vs Cajero) con lógica de stock
    ============================================ */
 (function() {
   let allOrders = [];
@@ -12,14 +12,9 @@
     if (!profile) return;
     staffProfile = profile;
 
-    // Determinar rol
-    if (profile.role === 'admin') {
-      staffRole = 'admin';
-    } else {
-      staffRole = profile.staff_role || 'kitchen';
-    }
+    if (profile.role === 'admin') staffRole = 'admin';
+    else staffRole = profile.staff_role || 'kitchen';
 
-    // Configurar UI según el rol
     document.getElementById('appLoader').style.display = 'none';
     document.getElementById('appWrapper').style.display = 'block';
     document.getElementById('userName').textContent = profile.full_name || 'Staff';
@@ -56,7 +51,6 @@
       roleBadge.textContent = 'ADMIN';
       roleBadge.style.background = 'var(--brand-500)';
       roleBadge.style.color = '#fff';
-      // Admin ve todos los KPIs
       kpiGrid.innerHTML = `
         <div class="kpi-card kpi-card--blue"><div class="kpi-label">Por Cobrar</div><div class="kpi-value" id="kpiPendientes">0</div></div>
         <div class="kpi-card kpi-card--yellow"><div class="kpi-label">En Cocina</div><div class="kpi-value" id="kpiPreparacion">0</div></div>
@@ -68,7 +62,6 @@
       roleBadge.textContent = 'CAJERO';
       roleBadge.style.background = '#3b82f6';
       roleBadge.style.color = '#fff';
-      // Cajero ve: Por Cobrar, Listos
       kpiGrid.innerHTML = `
         <div class="kpi-card kpi-card--blue"><div class="kpi-label">Por Cobrar</div><div class="kpi-value" id="kpiPendientes">0</div></div>
         <div class="kpi-card kpi-card--green"><div class="kpi-label">Listos para Entregar</div><div class="kpi-value" id="kpiListos">0</div></div>
@@ -79,7 +72,6 @@
       roleBadge.textContent = 'COCINA';
       roleBadge.style.background = 'var(--accent-500)';
       roleBadge.style.color = '#000';
-      // Cocina ve: En Cocina, Listos
       kpiGrid.innerHTML = `
         <div class="kpi-card kpi-card--yellow"><div class="kpi-label">Por Preparar</div><div class="kpi-value" id="kpiPreparacion">0</div></div>
         <div class="kpi-card kpi-card--green"><div class="kpi-label">Listos (en cocina)</div><div class="kpi-value" id="kpiListos">0</div></div>
@@ -95,27 +87,20 @@
       listo: document.getElementById('colListo')
     };
 
-    // Admin ve todo
     if (staffRole === 'admin') {
       Object.values(cols).forEach(c => { if (c) c.style.display = 'block'; });
       return;
     }
-
-    // CAJERO: ve Pendientes de Pago, Confirmados (solo efectivo) y Listos
     if (staffRole === 'cashier') {
       if (cols.pendientePago) cols.pendientePago.style.display = 'block';
       if (cols.confirmado) cols.confirmado.style.display = 'block';
       if (cols.listo) cols.listo.style.display = 'block';
-      // Cambiar título de la columna "Confirmados" para el cajero
       const title = document.getElementById('titleConfirmado');
       if (title) title.textContent = '💵 Cobrar en Efectivo';
     }
-
-    // COCINA: ve Confirmados (para preparar) y En Preparación
     if (staffRole === 'kitchen') {
       if (cols.confirmado) cols.confirmado.style.display = 'block';
       if (cols.preparacion) cols.preparacion.style.display = 'block';
-      // Cambiar título de la columna "Confirmados" para cocina
       const title = document.getElementById('titleConfirmado');
       if (title) title.textContent = '🔵 Nuevos Pedidos';
     }
@@ -123,16 +108,9 @@
 
   async function loadOrders() {
     let statusFilter;
-    
-    if (staffRole === 'admin') {
-      statusFilter = ['pendiente_pago', 'confirmado', 'en_preparacion', 'listo'];
-    } else if (staffRole === 'cashier') {
-      // Cajero: ve pendientes de pago, confirmados (para cobrar efectivo) y listos
-      statusFilter = ['pendiente_pago', 'confirmado', 'listo'];
-    } else {
-      // Cocina: ve confirmados (para preparar) y en preparación
-      statusFilter = ['confirmado', 'en_preparacion'];
-    }
+    if (staffRole === 'admin') statusFilter = ['pendiente_pago', 'confirmado', 'en_preparacion', 'listo'];
+    else if (staffRole === 'cashier') statusFilter = ['pendiente_pago', 'confirmado', 'listo'];
+    else statusFilter = ['confirmado', 'en_preparacion'];
 
     const { data, error } = await window.supabase
       .rpc('get_orders_with_client_name', { p_statuses: statusFilter });
@@ -154,17 +132,12 @@
   }
 
   function updateKPIs() {
-    const pendientes = allOrders.filter(o => o.status === 'pendiente_pago');
-    const preparacion = allOrders.filter(o => o.status === 'en_preparacion');
-    const listos = allOrders.filter(o => o.status === 'listo');
-    
     const kpiPend = document.getElementById('kpiPendientes');
     const kpiPrep = document.getElementById('kpiPreparacion');
     const kpiList = document.getElementById('kpiListos');
-    
-    if (kpiPend) kpiPend.textContent = pendientes.length;
-    if (kpiPrep) kpiPrep.textContent = preparacion.length;
-    if (kpiList) kpiList.textContent = listos.length;
+    if (kpiPend) kpiPend.textContent = allOrders.filter(o => o.status === 'pendiente_pago').length;
+    if (kpiPrep) kpiPrep.textContent = allOrders.filter(o => o.status === 'en_preparacion').length;
+    if (kpiList) kpiList.textContent = allOrders.filter(o => o.status === 'listo').length;
   }
 
   function renderKanban() {
@@ -187,7 +160,6 @@
     const countC = document.getElementById('countConfirmados');
     const countPrep = document.getElementById('countPreparacion');
     const countL = document.getElementById('countListo');
-    
     if (countP) countP.textContent = groups.pendiente_pago.length;
     if (countC) countC.textContent = groups.confirmado.length;
     if (countPrep) countPrep.textContent = groups.en_preparacion.length;
@@ -211,9 +183,7 @@
     
     let actionBtn = '';
     
-    // Lógica estricta por rol y estado
     if (o.status === 'pendiente_pago') {
-      // Solo cajero/admin puede cobrar
       if (staffRole === 'cashier' || staffRole === 'admin') {
         actionBtn = `<button class="btn-sm-action btn-pay" onclick="event.stopPropagation(); window.__confirmPayment(${o.id})">💰 Confirmar Pago</button>`;
       } else {
@@ -221,17 +191,14 @@
       }
     } else if (o.status === 'confirmado') {
       if (staffRole === 'kitchen') {
-        // Cocina prepara
         actionBtn = `<button class="btn-sm-action btn-prepare" onclick="event.stopPropagation(); window.__changeStatus(${o.id}, 'en_preparacion')">👨‍🍳 Preparar</button>`;
       } else if (staffRole === 'cashier') {
-        // Cajero solo actúa si es efectivo
         if (o.payment_method === 'efectivo') {
           actionBtn = `<button class="btn-sm-action btn-pay" onclick="event.stopPropagation(); window.__confirmPayment(${o.id})">💵 Cobrar</button>`;
         } else {
           actionBtn = `<span style="font-size:0.8rem;color:#93c5fd;">⏳ Esperando cocina...</span>`;
         }
       } else {
-        // Admin puede preparar
         actionBtn = `<button class="btn-sm-action btn-prepare" onclick="event.stopPropagation(); window.__changeStatus(${o.id}, 'en_preparacion')">👨‍🍳 Preparar</button>`;
       }
     } else if (o.status === 'en_preparacion') {
@@ -241,7 +208,6 @@
         actionBtn = `<span style="font-size:0.8rem;color:#fcd34d;">⏳ En cocina...</span>`;
       }
     } else if (o.status === 'listo') {
-      // Solo cajero/admin entrega
       if (staffRole === 'cashier' || staffRole === 'admin') {
         actionBtn = `<button class="btn-sm-action btn-deliver" onclick="event.stopPropagation(); window.__changeStatus(${o.id}, 'entregado')">📦 Marcar Entregado</button>`;
       } else {
@@ -289,13 +255,27 @@
     }
   };
 
+  // CONFIRMAR PAGO → usa RPC para descontar stock correctamente
   window.__confirmPayment = async (orderId) => {
-    const { error } = await window.supabase
-      .from('orders')
-      .update({ status: 'confirmado' })
-      .eq('id', orderId);
-    if (error) alert('Error: ' + error.message);
-    else { alert('✅ Pago confirmado. El pedido pasará a cocina.'); await loadOrders(); }
+    try {
+      const { data, error } = await window.supabase
+        .rpc('confirm_order_payment', { p_order_id: orderId });
+
+      if (error) {
+        if (error.message.includes('SOLD_OUT')) {
+          alert('❌ No se puede confirmar: uno de los productos se agotó mientras el cliente esperaba.');
+          // Cancelar el pedido automáticamente
+          await window.supabase.rpc('cancel_order_and_restore_stock', { p_order_id: orderId });
+        } else {
+          throw error;
+        }
+      } else {
+        alert('✅ Pago confirmado y stock descontado. El pedido pasa a cocina.');
+        await loadOrders();
+      }
+    } catch (err) {
+      alert('Error al confirmar pago: ' + err.message);
+    }
   };
 
   window.__viewOrderDetail = async (orderId) => {

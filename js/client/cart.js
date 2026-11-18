@@ -1,12 +1,11 @@
 /* ============================================
-   CART.JS — Lógica del carrito (Encapsulado)
+   CART.JS — Carrito con límite de stock
    ============================================ */
 (function() {
   let cart = JSON.parse(localStorage.getItem('dulcemania_cart')) || [];
 
   document.addEventListener('DOMContentLoaded', () => {
     updateCartUI();
-    
     window.addEventListener('add-to-cart', (e) => addToCart(e.detail));
 
     const cartToggle = document.getElementById('cartToggle');
@@ -37,21 +36,30 @@
     });
   });
 
-  function saveCart() {
-    localStorage.setItem('dulcemania_cart', JSON.stringify(cart));
-  }
+  function saveCart() { localStorage.setItem('dulcemania_cart', JSON.stringify(cart)); }
 
   function addToCart(product) {
     const existing = cart.find(i => i.product_id === product.id);
+    const stockDisponible = product.stock || 0;
+    
     if (existing) {
+      if (existing.quantity >= stockDisponible) {
+        alert(`Solo hay ${stockDisponible} unidades de ${product.name} disponibles.`);
+        return;
+      }
       existing.quantity += 1;
     } else {
+      if (stockDisponible <= 0) {
+        alert(`${product.name} está agotado.`);
+        return;
+      }
       cart.push({ 
         product_id: product.id, 
         name: product.name, 
         price: product.price, 
         image_url: product.image_url, 
-        quantity: 1 
+        quantity: 1,
+        stock_max: stockDisponible
       });
     }
     saveCart();
@@ -62,16 +70,11 @@
     const badge = document.getElementById('cartBadge');
     const itemsContainer = document.getElementById('cartItems');
     const totalEl = document.getElementById('cartTotal');
-    
-    if (!badge || !itemsContainer || !totalEl) return; // Si no estamos en el dashboard, salir
+    if (!badge || !itemsContainer || !totalEl) return;
 
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-    if (totalItems > 0) { 
-      badge.textContent = totalItems; 
-      badge.classList.remove('hidden'); 
-    } else { 
-      badge.classList.add('hidden'); 
-    }
+    if (totalItems > 0) { badge.textContent = totalItems; badge.classList.remove('hidden'); }
+    else { badge.classList.add('hidden'); }
 
     if (cart.length === 0) {
       itemsContainer.innerHTML = `<p style="text-align:center;color:#64748b;margin-top:2rem;">Tu carrito está vacío.</p>`;
@@ -81,7 +84,7 @@
           <img src="${item.image_url}" class="cart-item-img" alt="${item.name}">
           <div class="cart-item-info">
             <p class="cart-item-title">${item.name}</p>
-            <p class="cart-item-price">Bs. ${item.price}</p>
+            <p class="cart-item-price">Bs. ${item.price} c/u</p>
             <div class="cart-item-actions">
               <button class="cart-qty-btn" onclick="window.__changeQty(${item.product_id}, -1)">-</button>
               <span class="cart-qty">${item.quantity}</span>
@@ -96,10 +99,15 @@
     totalEl.textContent = `Bs. ${total.toFixed(2)}`;
   }
 
-  // Funciones globales para los botones inline
   window.__changeQty = (id, delta) => {
     const item = cart.find(i => i.product_id === id);
     if (!item) return;
+    
+    if (delta > 0 && item.quantity >= (item.stock_max || 999)) {
+      alert(`Solo hay ${item.stock_max} unidades disponibles.`);
+      return;
+    }
+    
     item.quantity += delta;
     if (item.quantity <= 0) cart = cart.filter(i => i.product_id !== id);
     saveCart();

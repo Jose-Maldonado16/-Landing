@@ -1,5 +1,6 @@
 /* ============================================
-   CHECKOUT.JS — Con RPC de stock, QR real y PayPal Sandbox
+   CHECKOUT.JS — Crear pedido con reserva de stock
+   (el stock se descuenta al confirmar pago)
    ============================================ */
 (function() {
   let currentUser = null;
@@ -63,7 +64,6 @@
   }
 
   function initForm() {
-    // Dirección
     const deliveryRadios = document.querySelectorAll('input[name="deliveryType"]');
     const addressField = document.getElementById('addressField');
     const addressInput = document.getElementById('deliveryAddress');
@@ -81,7 +81,6 @@
       });
     });
 
-    // Método de pago: QR / PayPal
     const paymentRadios = document.querySelectorAll('input[name="paymentMethod"]');
     const qrContainer = document.getElementById('qr-container');
     const paypalContainer = document.getElementById('paypal-button-container');
@@ -90,8 +89,6 @@
     paymentRadios.forEach(radio => {
       radio.addEventListener('change', (e) => {
         const val = e.target.value;
-        
-        // Ocultar todo primero
         qrContainer.style.display = 'none';
         paypalContainer.style.display = 'none';
         paypalContainer.innerHTML = '';
@@ -103,20 +100,17 @@
           generateQR();
         } else if (val === 'paypal') {
           paypalContainer.style.display = 'block';
-          btnSubmit.style.display = 'none'; // El botón de PayPal maneja el envío
+          btnSubmit.style.display = 'none';
           renderPayPalButton();
         }
       });
     });
 
-    // Generar QR inicial (porque QR es el default)
     generateQR();
-
     const form = document.getElementById('checkoutForm');
     form.addEventListener('submit', handleSubmit);
   }
 
-  // --- GENERAR QR REAL ---
   function generateQR() {
     const qrDiv = document.getElementById('qrcode');
     if (!qrDiv || typeof QRCode === 'undefined') return;
@@ -128,16 +122,12 @@
     const qrData = `DULCEMANIA-PAGO:${Date.now()}:${total.toFixed(2)}:${currentUser.id.substring(0,8)}`;
 
     new QRCode(qrDiv, {
-      text: qrData,
-      width: 200,
-      height: 200,
-      colorDark: '#0f172a',
-      colorLight: '#ffffff',
+      text: qrData, width: 200, height: 200,
+      colorDark: '#0f172a', colorLight: '#ffffff',
       correctLevel: QRCode.CorrectLevel.H
     });
   }
 
-  // --- PAYPAL SANDBOX ---
   function renderPayPalButton() {
     if (paypalRendered) return;
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -157,13 +147,8 @@
   function renderPayPalButtons(totalUSD) {
     const container = document.getElementById('paypal-button-container');
     container.innerHTML = '';
-
     paypal.Buttons({
-      createOrder: (data, actions) => {
-        return actions.order.create({
-          purchase_units: [{ amount: { value: totalUSD } }]
-        });
-      },
+      createOrder: (data, actions) => actions.order.create({ purchase_units: [{ amount: { value: totalUSD } }] }),
       onApprove: async (data, actions) => {
         await actions.order.capture();
         await createOrder('paypal');
@@ -175,11 +160,10 @@
     }).render('#paypal-button-container');
   }
 
-  // --- SUBMIT (para QR/Tarjeta/Efectivo) ---
   async function handleSubmit(e) {
     e.preventDefault();
     const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked')?.value;
-    if (paymentMethod === 'paypal') return; // PayPal usa su propio botón
+    if (paymentMethod === 'paypal') return;
 
     const btnSubmit = document.getElementById('btnConfirmOrder');
     btnSubmit.disabled = true;
@@ -188,7 +172,6 @@
     await createOrder(paymentMethod);
   }
 
-  // --- CREAR ORDEN CON RPC (STOCK) ---
   async function createOrder(paymentMethod) {
     const errorEl = document.getElementById('checkoutError');
     errorEl.classList.add('hidden');
@@ -214,6 +197,8 @@
         custom_notes: orderNotes || null
       }));
 
+      // La función RPC valida stock, determina estado inicial y crea el pedido.
+      // NO descuenta el stock (eso se hace cuando el cajero confirma el pago).
       const { data: orderId, error: rpcError } = await window.supabase.rpc('create_order_with_stock_check', {
         p_user_id: currentUser.id,
         p_delivery_type: deliveryType,
@@ -231,23 +216,15 @@
         throw new Error(rpcError.message);
       }
 
-      // Si es QR o efectivo, queda pendiente de confirmación del cajero
-      if (paymentMethod === 'qr' || paymentMethod === 'efectivo') {
-        await window.supabase.from('orders').update({ status: 'pendiente_pago' }).eq('id', orderId);
-      }
-
       localStorage.removeItem('dulcemania_cart');
-      alert(`✅ ¡Pedido #${orderId} confirmado!\n\nTotal: Bs. ${total.toFixed(2)}\nMétodo: ${paymentMethod.toUpperCase()}`);
+      alert(`✅ ¡Pedido #${orderId} confirmado!\n\nTotal: Bs. ${total.toFixed(2)}\nMétodo: ${paymentMethod.toUpperCase()}\n\n${paymentMethod === 'qr' || paymentMethod === 'efectivo' ? 'Espera a que el cajero confirme tu pago.' : 'Tu pedido ya está en preparación.'}`);
       window.location.replace(`/client/order-success.html?id=${orderId}`);
 
     } catch (err) {
       console.error('Error:', err);
       showError(err.message || 'Error al procesar el pedido.');
       const btnSubmit = document.getElementById('btnConfirmOrder');
-      if (btnSubmit) {
-        btnSubmit.disabled = false;
-        btnSubmit.textContent = 'Confirmar Pedido';
-      }
+      if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.textContent = 'Confirmar Pedido'; }
     }
   }
 
