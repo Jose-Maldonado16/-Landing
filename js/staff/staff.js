@@ -232,7 +232,8 @@
       }
     } else if (o.status === 'listo') {
       if (staffRole === 'cashier' || staffRole === 'admin') {
-        actionBtn = `<button class="btn-sm-action btn-deliver" onclick="event.stopPropagation(); window.__changeStatus(${o.id}, 'entregado')">📦 Marcar Entregado</button>`;
+        const btnText = o.delivery_type === 'domicilio' ? '🛵 Enviar' : '📦 Entregar';
+        actionBtn = `<button class="btn-sm-action btn-deliver" onclick="event.stopPropagation(); window.__changeStatus(${o.id}, 'entregado')">${btnText}</button>`;
       } else {
         actionBtn = `<span style="font-size:0.8rem;color:#6ee7b7;">✅ Listo (esperando caja)</span>`;
       }

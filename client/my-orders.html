@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mis Pedidos — DulceMania 🍦</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Pacifico&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="stylesheet" href="/css/dashboard.css" />
+  
+  <style>
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    
+    .orders-main { padding-top: 2rem; padding-bottom: 4rem; }
+    .orders-header { margin-bottom: 2rem; }
+    .orders-title { font-size: 2rem; font-weight: 800; color: var(--text-main); }
+    .orders-subtitle { color: var(--text-muted); font-size: 1.1rem; margin-top: 0.25rem; }
+    
+    .orders-list { display: flex; flex-direction: column; gap: 1.5rem; }
+    
+    .order-card-detail {
+      background: var(--card-dark);
+      border-radius: 1rem;
+      border: 1px solid var(--border-dark);
+      overflow: hidden;
+      animation: fadeIn 0.4s ease;
+    }
+    
+    .order-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.25rem 1.5rem;
+      background: #0b1120;
+      border-bottom: 1px solid var(--border-dark);
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    .order-id-tag { font-weight: 800; color: var(--brand-500); font-size: 1.1rem; }
+    .order-date { font-size: 0.85rem; color: var(--text-muted); }
+    
+    .status-badge {
+      padding: 6px 14px;
+      border-radius: 99px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: capitalize;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .status-pendiente_pago { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+    .status-confirmado { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+    .status-en_preparacion { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
+    .status-listo { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; animation: pulse 2s infinite; }
+    .status-entregado { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
+    .status-cancelado { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+    
+    .order-card-body { padding: 1.5rem; }
+    
+    /* Timeline de estados */
+    .timeline {
+      display: flex;
+      justify-content: space-between;
+      margin: 1.5rem 0 2rem;
+      position: relative;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      top: 20px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--border-dark);
+      z-index: 0;
+    }
+    .timeline-step {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      min-width: 80px;
+      opacity: 0.4;
+      transition: opacity 0.3s;
+    }
+    .timeline-step.completed { opacity: 1; }
+    .timeline-step.active { opacity: 1; }
+    .timeline-step.active .timeline-icon {
+      background: var(--brand-500);
+      box-shadow: 0 0 0 4px rgba(244,63,94,0.3);
+      animation: pulse 2s infinite;
+    }
+    .timeline-step.completed .timeline-icon {
+      background: #10b981;
+    }
+    .timeline-icon {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: var(--border-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+    .timeline-label { font-size: 0.75rem; color: var(--text-muted); text-align: center; font-weight: 600; }
+    .timeline-step.active .timeline-label { color: var(--text-main); }
+    .timeline-step.completed .timeline-label { color: #6ee7b7; }
+    
+    /* Info general */
+    .order-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px dashed var(--border-dark);
+    }
+    .order-meta-item { font-size: 0.85rem; }
+    .order-meta-label { color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.5px; }
+    .order-meta-value { color: var(--text-main); font-weight: 600; margin-top: 0.25rem; }
+    
+    /* Lista de items */
+    .order-items-list {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px dashed var(--border-dark);
+    }
+    .order-item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      font-size: 0.9rem;
+      color: var(--text-main);
+      border-bottom: 1px solid var(--border-dark);
+    }
+    .order-item-row:last-child { border-bottom: none; }
+    .order-item-extras { margin-left: 1.5rem; font-size: 0.8rem; color: var(--text-muted); padding: 0.25rem 0; }
+    .order-total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 2px solid var(--border-dark);
+      font-size: 1.1rem;
+      font-weight: 800;
+    }
+    .order-total-value { color: var(--brand-500); font-size: 1.4rem; }
+    
+    /* Mensaje especial por tipo de entrega */
+    .delivery-banner {
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .delivery-banner--recojo {
+      background: rgba(16, 185, 129, 0.15);
+      color: #6ee7b7;
+      border-left: 3px solid #10b981;
+    }
+    .delivery-banner--domicilio {
+      background: rgba(59, 130, 246, 0.15);
+      color: #93c5fd;
+      border-left: 3px solid #3b82f6;
+    }
+    .delivery-banner--waiting {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fcd34d;
+      border-left: 3px solid #f59e0b;
+    }
+    
+    .empty-orders {
+      text-align: center;
+      padding: 4rem 2rem;
+      background: var(--card-dark);
+      border-radius: 1rem;
+      border: 1px solid var(--border-dark);
+    }
+    .empty-orders-icon { font-size: 4rem; margin-bottom: 1rem; }
+    .empty-orders-text { color: var(--text-muted); font-size: 1.1rem; margin-bottom: 1.5rem; }
+  </style>
+</head>
+<body class="dashboard-body">
+
+  <div id="appLoader" style="position:fixed;inset:0;background:#0f172a;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;">
+    <div style="font-size:3rem;animation:spin 1s linear infinite;">🍦</div>
+    <p style="font-weight:600;color:#94a3b8;">Cargando pedidos...</p>
+  </div>
+
+  <div id="appWrapper" style="display:none;">
+    
+    <header class="dash-navbar">
+      <div class="container dash-navbar__container">
+        <a href="/client/dashboard.html" class="dash-brand">
+          <span class="dash-brand-icon">🍦</span>
+          <span class="dash-brand-text">Dulce<span class="dash-brand-accent">Mania</span></span>
+        </a>
+        <div class="dash-user">
+          <a href="/client/dashboard.html" class="btn btn--outline btn--sm">← Volver al Menú</a>
+          <button id="btnLogout" class="btn btn--outline btn--sm">Salir</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="container orders-main">
+      <section class="orders-header">
+        <h1 class="orders-title">📋 Mis Pedidos</h1>
+        <p class="orders-subtitle">Aquí puedes ver el estado de todos tus pedidos en tiempo real.</p>
+      </section>
+
+      <div id="ordersList" class="orders-list">
+        <p style="text-align:center;color:var(--text-muted);padding:2rem;">Cargando pedidos...</p>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabaseClient.js"></script>
+  <script src="/js/client/my-orders.js"></script>
+</body>
+</html>
