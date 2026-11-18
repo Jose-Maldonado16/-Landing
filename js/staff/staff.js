@@ -1,5 +1,6 @@
 /* ============================================
-   STAFF.JS — Panel mejorado con KPIs y flujo completo
+   STAFF.JS — Separación total de roles
+   (Cocina vs Cajero)
    ============================================ */
 (function() {
   let allOrders = [];
@@ -11,44 +12,22 @@
     if (!profile) return;
     staffProfile = profile;
 
+    // Determinar rol
     if (profile.role === 'admin') {
       staffRole = 'admin';
     } else {
       staffRole = profile.staff_role || 'kitchen';
     }
 
+    // Configurar UI según el rol
     document.getElementById('appLoader').style.display = 'none';
     document.getElementById('appWrapper').style.display = 'block';
     document.getElementById('userName').textContent = profile.full_name || 'Staff';
 
-    const pageTitle = document.getElementById('pageTitle');
-    const pageSubtitle = document.getElementById('pageSubtitle');
-    const roleBadge = document.getElementById('roleBadge');
-
-    if (staffRole === 'admin') {
-      pageTitle.textContent = 'Panel Completo (Admin)';
-      pageSubtitle.textContent = 'Vista completa de pedidos y preparación.';
-      roleBadge.textContent = 'ADMIN';
-      roleBadge.style.background = 'var(--brand-500)';
-      roleBadge.style.color = '#fff';
-    } else if (staffRole === 'cashier') {
-      pageTitle.textContent = 'Panel de Caja y Despacho';
-      pageSubtitle.textContent = 'Confirma pagos y entrega los pedidos listos.';
-      roleBadge.textContent = 'CAJERO';
-      roleBadge.style.background = '#3b82f6';
-      roleBadge.style.color = '#fff';
-    } else {
-      pageTitle.textContent = 'Panel de Cocina';
-      pageSubtitle.textContent = 'Prepara los pedidos confirmados.';
-      roleBadge.textContent = 'COCINA';
-      roleBadge.style.background = 'var(--accent-500)';
-      roleBadge.style.color = '#000';
-    }
-
+    configureRoleUI();
     applyRoleVisibility();
 
     document.getElementById('btnLogout').addEventListener('click', () => window.logoutUser());
-
     document.getElementById('btnCloseDetail').addEventListener('click', () => {
       document.getElementById('orderDetailModal').classList.remove('active');
     });
@@ -65,6 +44,49 @@
       .subscribe();
   });
 
+  function configureRoleUI() {
+    const pageTitle = document.getElementById('pageTitle');
+    const pageSubtitle = document.getElementById('pageSubtitle');
+    const roleBadge = document.getElementById('roleBadge');
+    const kpiGrid = document.getElementById('kpiGrid');
+
+    if (staffRole === 'admin') {
+      pageTitle.textContent = 'Panel de Administración';
+      pageSubtitle.textContent = 'Vista completa de todos los pedidos.';
+      roleBadge.textContent = 'ADMIN';
+      roleBadge.style.background = 'var(--brand-500)';
+      roleBadge.style.color = '#fff';
+      // Admin ve todos los KPIs
+      kpiGrid.innerHTML = `
+        <div class="kpi-card kpi-card--blue"><div class="kpi-label">Por Cobrar</div><div class="kpi-value" id="kpiPendientes">0</div></div>
+        <div class="kpi-card kpi-card--yellow"><div class="kpi-label">En Cocina</div><div class="kpi-value" id="kpiPreparacion">0</div></div>
+        <div class="kpi-card kpi-card--green"><div class="kpi-label">Listos</div><div class="kpi-value" id="kpiListos">0</div></div>
+      `;
+    } else if (staffRole === 'cashier') {
+      pageTitle.textContent = 'Panel de Caja y Despacho';
+      pageSubtitle.textContent = 'Confirma pagos y entrega los pedidos listos.';
+      roleBadge.textContent = 'CAJERO';
+      roleBadge.style.background = '#3b82f6';
+      roleBadge.style.color = '#fff';
+      // Cajero ve: Por Cobrar, Listos
+      kpiGrid.innerHTML = `
+        <div class="kpi-card kpi-card--blue"><div class="kpi-label">Por Cobrar</div><div class="kpi-value" id="kpiPendientes">0</div></div>
+        <div class="kpi-card kpi-card--green"><div class="kpi-label">Listos para Entregar</div><div class="kpi-value" id="kpiListos">0</div></div>
+      `;
+    } else {
+      pageTitle.textContent = 'Panel de Cocina';
+      pageSubtitle.textContent = 'Prepara los pedidos confirmados.';
+      roleBadge.textContent = 'COCINA';
+      roleBadge.style.background = 'var(--accent-500)';
+      roleBadge.style.color = '#000';
+      // Cocina ve: En Cocina, Listos
+      kpiGrid.innerHTML = `
+        <div class="kpi-card kpi-card--yellow"><div class="kpi-label">Por Preparar</div><div class="kpi-value" id="kpiPreparacion">0</div></div>
+        <div class="kpi-card kpi-card--green"><div class="kpi-label">Listos (en cocina)</div><div class="kpi-value" id="kpiListos">0</div></div>
+      `;
+    }
+  }
+
   function applyRoleVisibility() {
     const cols = {
       pendientePago: document.getElementById('colPendientePago'),
@@ -73,28 +95,44 @@
       listo: document.getElementById('colListo')
     };
 
-    // La columna de "Listos" SIEMPRE visible para todos los roles
-    if (cols.listo) cols.listo.style.display = 'block';
-
+    // Admin ve todo
     if (staffRole === 'admin') {
       Object.values(cols).forEach(c => { if (c) c.style.display = 'block'; });
       return;
     }
+
+    // CAJERO: ve Pendientes de Pago, Confirmados (solo efectivo) y Listos
     if (staffRole === 'cashier') {
       if (cols.pendientePago) cols.pendientePago.style.display = 'block';
       if (cols.confirmado) cols.confirmado.style.display = 'block';
+      if (cols.listo) cols.listo.style.display = 'block';
+      // Cambiar título de la columna "Confirmados" para el cajero
+      const title = document.getElementById('titleConfirmado');
+      if (title) title.textContent = '💵 Cobrar en Efectivo';
     }
+
+    // COCINA: ve Confirmados (para preparar) y En Preparación
     if (staffRole === 'kitchen') {
       if (cols.confirmado) cols.confirmado.style.display = 'block';
       if (cols.preparacion) cols.preparacion.style.display = 'block';
+      // Cambiar título de la columna "Confirmados" para cocina
+      const title = document.getElementById('titleConfirmado');
+      if (title) title.textContent = '🔵 Nuevos Pedidos';
     }
   }
 
   async function loadOrders() {
     let statusFilter;
-    if (staffRole === 'admin') statusFilter = ['pendiente_pago', 'confirmado', 'en_preparacion', 'listo'];
-    else if (staffRole === 'cashier') statusFilter = ['pendiente_pago', 'confirmado', 'listo'];
-    else statusFilter = ['confirmado', 'en_preparacion', 'listo'];
+    
+    if (staffRole === 'admin') {
+      statusFilter = ['pendiente_pago', 'confirmado', 'en_preparacion', 'listo'];
+    } else if (staffRole === 'cashier') {
+      // Cajero: ve pendientes de pago, confirmados (para cobrar efectivo) y listos
+      statusFilter = ['pendiente_pago', 'confirmado', 'listo'];
+    } else {
+      // Cocina: ve confirmados (para preparar) y en preparación
+      statusFilter = ['confirmado', 'en_preparacion'];
+    }
 
     const { data, error } = await window.supabase
       .rpc('get_orders_with_client_name', { p_statuses: statusFilter });
@@ -117,16 +155,16 @@
 
   function updateKPIs() {
     const pendientes = allOrders.filter(o => o.status === 'pendiente_pago');
+    const preparacion = allOrders.filter(o => o.status === 'en_preparacion');
     const listos = allOrders.filter(o => o.status === 'listo');
     
-    document.getElementById('kpiPendientes').textContent = pendientes.length;
-    document.getElementById('kpiListos').textContent = listos.length;
-
-    // Total del día (solo pedidos con estado != cancelado)
-    const today = new Date().toISOString().split('T')[0];
-    const ordersToday = allOrders.filter(o => o.created_at && o.created_at.startsWith(today));
-    const totalDia = ordersToday.reduce((sum, o) => sum + Number(o.total), 0);
-    document.getElementById('kpiTotalDia').textContent = `Bs. ${totalDia.toFixed(2)}`;
+    const kpiPend = document.getElementById('kpiPendientes');
+    const kpiPrep = document.getElementById('kpiPreparacion');
+    const kpiList = document.getElementById('kpiListos');
+    
+    if (kpiPend) kpiPend.textContent = pendientes.length;
+    if (kpiPrep) kpiPrep.textContent = preparacion.length;
+    if (kpiList) kpiList.textContent = listos.length;
   }
 
   function renderKanban() {
@@ -145,10 +183,15 @@
       listo: allOrders.filter(o => o.status === 'listo'),
     };
 
-    document.getElementById('countPendientePago').textContent = groups.pendiente_pago.length;
-    document.getElementById('countConfirmados').textContent = groups.confirmado.length;
-    document.getElementById('countPreparacion').textContent = groups.en_preparacion.length;
-    document.getElementById('countListo').textContent = groups.listo.length;
+    const countP = document.getElementById('countPendientePago');
+    const countC = document.getElementById('countConfirmados');
+    const countPrep = document.getElementById('countPreparacion');
+    const countL = document.getElementById('countListo');
+    
+    if (countP) countP.textContent = groups.pendiente_pago.length;
+    if (countC) countC.textContent = groups.confirmado.length;
+    if (countPrep) countPrep.textContent = groups.en_preparacion.length;
+    if (countL) countL.textContent = groups.listo.length;
 
     Object.keys(groups).forEach(status => {
       const container = containers[status];
@@ -168,19 +211,28 @@
     
     let actionBtn = '';
     
+    // Lógica estricta por rol y estado
     if (o.status === 'pendiente_pago') {
+      // Solo cajero/admin puede cobrar
       if (staffRole === 'cashier' || staffRole === 'admin') {
         actionBtn = `<button class="btn-sm-action btn-pay" onclick="event.stopPropagation(); window.__confirmPayment(${o.id})">💰 Confirmar Pago</button>`;
       } else {
-        actionBtn = `<span style="font-size:0.8rem;color:#93c5fd;">⏳ Esperando pago...</span>`;
+        actionBtn = `<span style="font-size:0.8rem;color:#93c5fd;">⏳ Esperando cobro...</span>`;
       }
     } else if (o.status === 'confirmado') {
-      if (staffRole === 'kitchen' || staffRole === 'admin') {
+      if (staffRole === 'kitchen') {
+        // Cocina prepara
         actionBtn = `<button class="btn-sm-action btn-prepare" onclick="event.stopPropagation(); window.__changeStatus(${o.id}, 'en_preparacion')">👨‍🍳 Preparar</button>`;
-      } else if (staffRole === 'cashier' && o.payment_method === 'efectivo') {
-        actionBtn = `<button class="btn-sm-action btn-pay" onclick="event.stopPropagation(); window.__confirmPayment(${o.id})">💵 Cobrar</button>`;
+      } else if (staffRole === 'cashier') {
+        // Cajero solo actúa si es efectivo
+        if (o.payment_method === 'efectivo') {
+          actionBtn = `<button class="btn-sm-action btn-pay" onclick="event.stopPropagation(); window.__confirmPayment(${o.id})">💵 Cobrar</button>`;
+        } else {
+          actionBtn = `<span style="font-size:0.8rem;color:#93c5fd;">⏳ Esperando cocina...</span>`;
+        }
       } else {
-        actionBtn = `<span style="font-size:0.8rem;color:#93c5fd;">⏳ Esperando cocina...</span>`;
+        // Admin puede preparar
+        actionBtn = `<button class="btn-sm-action btn-prepare" onclick="event.stopPropagation(); window.__changeStatus(${o.id}, 'en_preparacion')">👨‍🍳 Preparar</button>`;
       }
     } else if (o.status === 'en_preparacion') {
       if (staffRole === 'kitchen' || staffRole === 'admin') {
@@ -189,8 +241,12 @@
         actionBtn = `<span style="font-size:0.8rem;color:#fcd34d;">⏳ En cocina...</span>`;
       }
     } else if (o.status === 'listo') {
-      // Cualquier staff puede entregar
-      actionBtn = `<button class="btn-sm-action btn-deliver" onclick="event.stopPropagation(); window.__changeStatus(${o.id}, 'entregado')">📦 Marcar Entregado</button>`;
+      // Solo cajero/admin entrega
+      if (staffRole === 'cashier' || staffRole === 'admin') {
+        actionBtn = `<button class="btn-sm-action btn-deliver" onclick="event.stopPropagation(); window.__changeStatus(${o.id}, 'entregado')">📦 Marcar Entregado</button>`;
+      } else {
+        actionBtn = `<span style="font-size:0.8rem;color:#6ee7b7;">✅ Listo (esperando caja)</span>`;
+      }
     }
 
     return `
@@ -289,7 +345,7 @@
         </div>
       `;
     }).join('') + `
-      <div style="display:flex; justify-content:space-between; margin-top:1rem; padding-top:0.5rem; border-top:2px solid var(--border-dark); font-weight:800; font-size:1.1rem;">
+      <div style="display:flex; justify-content:space-between; margin-top:1rem; padding-top:0.5rem; border-top:2px solid var(--border-dark); font-weight:800;">
         <span>Total</span>
         <span style="color:var(--brand-500);">Bs. ${totalCalculado.toFixed(2)}</span>
       </div>
