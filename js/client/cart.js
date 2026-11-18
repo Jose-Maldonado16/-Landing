@@ -1,5 +1,6 @@
 /* ============================================
-   CART.JS — Carrito con soporte para complementos
+   CART.JS — Carrito con instancias únicas
+   (permite el mismo producto con diferentes extras)
    ============================================ */
 (function() {
   let cart = JSON.parse(localStorage.getItem('dulcemania_cart')) || [];
@@ -38,33 +39,67 @@
 
   function saveCart() { localStorage.setItem('dulcemania_cart', JSON.stringify(cart)); }
 
+  // Genera un ID único para cada instancia del carrito
+  function generateCartItemId() {
+    return `cart_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+  }
+
   function addToCart(product) {
     const isExtra = product.is_extra === true;
-    const existing = cart.find(i => i.product_id === product.id && i.is_extra === isExtra);
+    const parentCartItemId = product.parent_cart_item_id || null;
     const stockDisponible = product.stock || 0;
-    
-    if (existing) {
-      if (existing.quantity >= stockDisponible) {
-        alert(`Solo hay ${stockDisponible} unidades de ${product.name} disponibles.`);
+
+    if (isExtra) {
+      // Es un complemento: se asocia a un cart_item_id existente
+      const parentItem = cart.find(i => i.cart_item_id === parentCartItemId);
+      if (!parentItem) {
+        alert('No se encontró el producto principal para este complemento.');
         return;
       }
-      existing.quantity += 1;
-    } else {
+
       if (stockDisponible <= 0) {
         alert(`${product.name} está agotado.`);
         return;
       }
-      cart.push({ 
-        product_id: product.id, 
-        name: product.name, 
-        price: product.price, 
-        image_url: product.image_url, 
-        quantity: 1,
-        stock_max: stockDisponible,
-        is_extra: isExtra,
-        parent_product: product.parent_product || null
-      });
+
+      // Agregar como sub-item dentro de parentItem.extras
+      if (!parentItem.extras) parentItem.extras = [];
+      
+      const existingExtra = parentItem.extras.find(e => e.product_id === product.id);
+      if (existingExtra) {
+        existingExtra.quantity += 1;
+      } else {
+        parentItem.extras.push({
+          product_id: product.id,
+          name: product.name,
+          price: product.price,
+          quantity: 1,
+          stock_max: stockDisponible
+        });
+      }
+
+      saveCart();
+      updateCartUI();
+      return;
     }
+
+    // Es un producto principal: cada uno es una instancia única
+    if (stockDisponible <= 0) {
+      alert(`${product.name} está agotado.`);
+      return;
+    }
+
+    cart.push({
+      cart_item_id: generateCartItemId(),
+      product_id: product.id,
+      name: product.name,
+      price: product.price,
+      image_url: product.image_url,
+      quantity: 1,
+      stock_max: stockDisponible,
+      extras: []
+    });
+
     saveCart();
     updateCartUI();
   }
@@ -82,13 +117,20 @@
     if (cart.length === 0) {
       itemsContainer.innerHTML = `<p style="text-align:center;color:#64748b;margin-top:2rem;">Tu carrito está vacío.</p>`;
     } else {
-      // Agrupar: primero productos principales, luego sus complementos
-      const principales = cart.filter(i => !i.is_extra);
-      const extras = cart.filter(i => i.is_extra);
+      itemsContainer.innerHTML = cart.map(item => {
+        const extrasHtml = (item.extras && item.extras.length > 0)
+          ? `
+            <div style="margin-left:1rem; margin-top:0.5rem; padding-left:0.75rem; border-left:2px solid var(--accent-500);">
+              ${item.extras.map(e => `
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:var(--text-muted); margin-bottom:0.25rem;">
+                  <span>➕ ${e.name} (x${e.quantity})</span>
+                  <span>Bs. ${(e.price * e.quantity).toFixed(2)}</span>
+                </div>
+              `).join('')}
+            </div>
+          `
+          : '';
 
-      itemsContainer.innerHTML = principales.map(item => {
-        const extrasDeEste = extras.filter(e => e.parent_product === item.name);
-        
         return `
           <div class="cart-item" style="flex-direction:column; align-items:stretch;">
             <div style="display:flex; gap:0.75rem; align-items:center;">
@@ -97,52 +139,30 @@
                 <p class="cart-item-title">${item.name}</p>
                 <p class="cart-item-price">Bs. ${item.price} c/u</p>
                 <div class="cart-item-actions">
-                  <button class="cart-qty-btn" onclick="window.__changeQty(${item.product_id}, -1)">-</button>
+                  <button class="cart-qty-btn" onclick="window.__changeQty('${item.cart_item_id}', -1)">-</button>
                   <span class="cart-qty">${item.quantity}</span>
-                  <button class="cart-qty-btn" onclick="window.__changeQty(${item.product_id}, 1)">+</button>
+                  <button class="cart-qty-btn" onclick="window.__changeQty('${item.cart_item_id}', 1)">+</button>
                 </div>
               </div>
-              <button class="cart-item-remove" onclick="window.__removeItem(${item.product_id})">🗑️</button>
+              <button class="cart-item-remove" onclick="window.__removeItem('${item.cart_item_id}')">🗑️</button>
             </div>
-            ${extrasDeEste.length > 0 ? `
-              <div style="margin-left:2rem; margin-top:0.5rem; padding-left:0.75rem; border-left:2px solid var(--accent-500);">
-                ${extrasDeEste.map(e => `
-                  <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:var(--text-muted); margin-bottom:0.25rem;">
-                    <span>➕ ${e.name} (x${e.quantity})</span>
-                    <span>Bs. ${(e.price * e.quantity).toFixed(2)}</span>
-                  </div>
-                `).join('')}
-              </div>
-            ` : ''}
+            ${extrasHtml}
           </div>
         `;
       }).join('');
-
-      // Extras huérfanos (sin producto principal)
-      const extrasHuerfanos = extras.filter(e => !principales.some(p => p.name === e.parent_product));
-      if (extrasHuerfanos.length > 0) {
-        itemsContainer.innerHTML += `
-          <div style="margin-top:1rem; padding-top:1rem; border-top:1px dashed var(--border-dark);">
-            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Complementos sueltos:</p>
-            ${extrasHuerfanos.map(e => `
-              <div class="cart-item">
-                <div class="cart-item-info">
-                  <p class="cart-item-title">${e.name}</p>
-                  <p class="cart-item-price">Bs. ${e.price} c/u</p>
-                </div>
-                <button class="cart-item-remove" onclick="window.__removeItem(${e.product_id})">🗑️</button>
-              </div>
-            `).join('')}
-          </div>
-        `;
-      }
     }
-    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+    // Calcular total incluyendo extras
+    const total = cart.reduce((sum, item) => {
+      const base = item.price * item.quantity;
+      const extrasTotal = (item.extras || []).reduce((s, e) => s + (e.price * e.quantity), 0);
+      return sum + base + extrasTotal;
+    }, 0);
     totalEl.textContent = `Bs. ${total.toFixed(2)}`;
   }
 
-  window.__changeQty = (id, delta) => {
-    const item = cart.find(i => i.product_id === id);
+  window.__changeQty = (cartItemId, delta) => {
+    const item = cart.find(i => i.cart_item_id === cartItemId);
     if (!item) return;
     
     if (delta > 0 && item.quantity >= (item.stock_max || 999)) {
@@ -152,14 +172,14 @@
     
     item.quantity += delta;
     if (item.quantity <= 0) {
-      cart = cart.filter(i => i.product_id !== id);
+      cart = cart.filter(i => i.cart_item_id !== cartItemId);
     }
     saveCart();
     updateCartUI();
   };
   
-  window.__removeItem = (id) => {
-    cart = cart.filter(i => i.product_id !== id);
+  window.__removeItem = (cartItemId) => {
+    cart = cart.filter(i => i.cart_item_id !== cartItemId);
     saveCart();
     updateCartUI();
   };

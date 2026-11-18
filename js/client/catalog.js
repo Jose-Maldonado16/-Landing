@@ -1,10 +1,11 @@
 /* ============================================
-   CATALOG.JS — Catálogo con extras (complementos)
+   CATALOG.JS — Catálogo con instancias únicas para extras
    ============================================ */
 (function() {
   let allProducts = [];
   let allComplementos = [];
   let currentProductForExtra = null;
+  let currentCartItemId = null;
 
   document.addEventListener('DOMContentLoaded', async () => {
     const profile = await window.guardPage(['client', 'admin', 'staff']);
@@ -37,7 +38,7 @@
       const { data, error } = await window.supabase
         .from('products')
         .select('*')
-        .neq('category', 'complementos') // Excluir complementos del catálogo principal
+        .neq('category', 'complementos')
         .order('id');
       
       if (error) throw error;
@@ -62,9 +63,7 @@
       .eq('category', 'complementos')
       .order('id');
     
-    if (!error) {
-      allComplementos = data || [];
-    }
+    if (!error) allComplementos = data || [];
   }
 
   function renderProducts(products) {
@@ -90,7 +89,7 @@
                   ${isOutOfStock ? 'Agotado' : '+ Agregar'}
                 </button>
                 ${hasExtras && !isOutOfStock ? `
-                  <button class="btn-extras" data-id="${p.id}" title="Agregar complementos" style="background: rgba(245,158,11,0.2); color: #fcd34d; border: none; border-radius: 99px; padding: 0.5rem 0.75rem; cursor: pointer; font-weight: 700; font-size: 0.8rem;">➕ Extras</button>
+                  <button class="btn-extras" data-id="${p.id}" title="Agregar con complementos" style="background: rgba(245,158,11,0.2); color: #fcd34d; border: none; border-radius: 99px; padding: 0.5rem 0.75rem; cursor: pointer; font-weight: 700; font-size: 0.8rem;">➕ Extras</button>
                 ` : ''}
               </div>
             </div>
@@ -99,7 +98,6 @@
       `;
     }).join('');
 
-    // Botón de agregar al carrito
     document.querySelectorAll('.btn-add-cart').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = parseInt(btn.dataset.id);
@@ -110,7 +108,6 @@
       });
     });
 
-    // Botón de abrir extras
     document.querySelectorAll('.btn-extras').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = parseInt(btn.dataset.id);
@@ -133,7 +130,6 @@
     });
   }
 
-  // --- MODAL DE EXTRAS ---
   function initExtrasModal() {
     const modal = document.getElementById('extrasModal');
     if (!modal) return;
@@ -145,6 +141,11 @@
     if (form) {
       form.addEventListener('submit', (e) => {
         e.preventDefault();
+        if (!currentCartItemId) {
+          alert('Error: no se encontró el producto en el carrito.');
+          return;
+        }
+
         const checkboxes = form.querySelectorAll('input[name="extras"]:checked');
         const selectedExtras = Array.from(checkboxes).map(cb => {
           return allComplementos.find(c => c.id === parseInt(cb.value));
@@ -155,15 +156,20 @@
           return;
         }
 
-        // Enviar cada extra como un item adicional del carrito
+        // Agregar cada extra asociado al cart_item_id del producto
         selectedExtras.forEach(extra => {
           window.dispatchEvent(new CustomEvent('add-to-cart', { 
-            detail: { ...extra, is_extra: true, parent_product: currentProductForExtra.name }
+            detail: { 
+              ...extra, 
+              is_extra: true, 
+              parent_cart_item_id: currentCartItemId
+            }
           }));
         });
 
         modal.classList.remove('active');
-        alert(`✅ Complementos agregados a ${currentProductForExtra.name}`);
+        currentCartItemId = null;
+        currentProductForExtra = null;
       });
     }
   }
@@ -175,9 +181,21 @@
     const form = document.getElementById('extrasForm');
     if (!modal || !title || !form) return;
 
+    // 1. Primero agregar el producto principal al carrito
+    window.dispatchEvent(new CustomEvent('add-to-cart', { detail: product }));
+
+    // 2. Obtener el cart_item_id del último producto agregado (el que acabamos de agregar)
+    // Leemos del localStorage porque cart.js ya lo guardó
+    const currentCart = JSON.parse(localStorage.getItem('dulcemania_cart')) || [];
+    const lastItem = currentCart[currentCart.length - 1];
+    if (!lastItem) {
+      alert('Error al agregar el producto al carrito.');
+      return;
+    }
+    currentCartItemId = lastItem.cart_item_id;
+
     title.textContent = `Complementos para: ${product.name}`;
 
-    // Renderizar checkboxes de complementos disponibles
     const disponibles = allComplementos.filter(c => c.is_available && c.stock > 0);
     if (disponibles.length === 0) {
       form.innerHTML = `<p style="text-align:center;color:var(--text-muted);">No hay complementos disponibles.</p>`;
@@ -212,7 +230,6 @@
           const filtered = activeFilter === 'all' ? allProducts : allProducts.filter(p => p.category === activeFilter);
           renderProducts(filtered);
         }
-        // Actualizar también los complementos si cambió su stock
         const idxC = allComplementos.findIndex(c => c.id === payload.new.id);
         if (idxC !== -1) allComplementos[idxC] = payload.new;
       })
