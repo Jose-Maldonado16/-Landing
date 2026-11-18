@@ -1,6 +1,5 @@
 /* ============================================
-   CHECKOUT.JS — Crear pedido con control de stock
-   y PayPal simulado (V3)
+   CHECKOUT.JS — Con RPC de stock, QR real y PayPal Sandbox
    ============================================ */
 (function() {
   let currentUser = null;
@@ -8,12 +7,10 @@
   let paypalRendered = false;
 
   document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Guard
     const profile = await window.guardPage(['client']);
     if (!profile) return;
     currentUser = profile;
 
-    // 2. Cargar carrito
     cart = JSON.parse(localStorage.getItem('dulcemania_cart')) || [];
     if (cart.length === 0) {
       alert('Tu carrito está vacío. Redirigiendo al menú.');
@@ -21,7 +18,6 @@
       return;
     }
 
-    // 3. Render y formulario
     renderSummary();
     initForm();
     setDateLimits();
@@ -49,31 +45,25 @@
     if (!dateInput || !timeInput) return;
 
     const now = new Date();
-    const fmtDate = (d) => {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${y}-${m}-${day}`;
-    };
+    const fmtDate = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const fmtTime = (d) => {
-      let h = d.getHours();
-      let min = d.getMinutes();
-      if (min < 30) { min = 30; } else { min = 0; h += 1; }
+      let h = d.getHours(), m = d.getMinutes();
+      if (m < 30) m = 30; else { m = 0; h += 1; }
       if (h >= 24) h = 0;
-      return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+      return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
     };
 
-    const today = new Date();
     const maxDate = new Date();
-    maxDate.setDate(today.getDate() + 3);
+    maxDate.setDate(now.getDate() + 3);
 
-    dateInput.min = fmtDate(today);
+    dateInput.min = fmtDate(now);
     dateInput.max = fmtDate(maxDate);
-    dateInput.value = fmtDate(today);
+    dateInput.value = fmtDate(now);
     timeInput.value = fmtTime(now);
   }
 
   function initForm() {
+    // Dirección
     const deliveryRadios = document.querySelectorAll('input[name="deliveryType"]');
     const addressField = document.getElementById('addressField');
     const addressInput = document.getElementById('deliveryAddress');
@@ -91,96 +81,105 @@
       });
     });
 
-    // Manejar el cambio de método de pago (para mostrar el botón de PayPal)
+    // Método de pago: QR / PayPal
     const paymentRadios = document.querySelectorAll('input[name="paymentMethod"]');
+    const qrContainer = document.getElementById('qr-container');
+    const paypalContainer = document.getElementById('paypal-button-container');
+    const btnSubmit = document.getElementById('btnConfirmOrder');
+
     paymentRadios.forEach(radio => {
       radio.addEventListener('change', (e) => {
-        const paypalContainer = document.getElementById('paypal-button-container');
-        if (e.target.value === 'paypal') {
-          if (paypalContainer) {
-            paypalContainer.style.display = 'block';
-            renderPayPalButton();
-          }
-          // Deshabilitar el botón de submit normal (usaremos el de PayPal)
-          const btnSubmit = document.getElementById('btnConfirmOrder');
-          if (btnSubmit) btnSubmit.style.display = 'none';
-        } else {
-          if (paypalContainer) {
-            paypalContainer.style.display = 'none';
-            paypalContainer.innerHTML = '';
-            paypalRendered = false;
-          }
-          const btnSubmit = document.getElementById('btnConfirmOrder');
-          if (btnSubmit) btnSubmit.style.display = 'block';
+        const val = e.target.value;
+        
+        // Ocultar todo primero
+        qrContainer.style.display = 'none';
+        paypalContainer.style.display = 'none';
+        paypalContainer.innerHTML = '';
+        paypalRendered = false;
+        btnSubmit.style.display = 'block';
+
+        if (val === 'qr') {
+          qrContainer.style.display = 'block';
+          generateQR();
+        } else if (val === 'paypal') {
+          paypalContainer.style.display = 'block';
+          btnSubmit.style.display = 'none'; // El botón de PayPal maneja el envío
+          renderPayPalButton();
         }
       });
     });
+
+    // Generar QR inicial (porque QR es el default)
+    generateQR();
 
     const form = document.getElementById('checkoutForm');
     form.addEventListener('submit', handleSubmit);
   }
 
-  // --- LÓGICA DE PAYPAL SIMULADO ---
-  function renderPayPalButton() {
-    if (paypalRendered) return;
-    const container = document.getElementById('paypal-button-container');
-    if (!container) return;
+  // --- GENERAR QR REAL ---
+  function generateQR() {
+    const qrDiv = document.getElementById('qrcode');
+    if (!qrDiv || typeof QRCode === 'undefined') return;
 
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    // Simulamos la conversión a USD (ej: 6.96 Bs = 1 USD)
+    document.getElementById('qrAmount').textContent = total.toFixed(2);
+
+    qrDiv.innerHTML = '';
+    const qrData = `DULCEMANIA-PAGO:${Date.now()}:${total.toFixed(2)}:${currentUser.id.substring(0,8)}`;
+
+    new QRCode(qrDiv, {
+      text: qrData,
+      width: 200,
+      height: 200,
+      colorDark: '#0f172a',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+  }
+
+  // --- PAYPAL SANDBOX ---
+  function renderPayPalButton() {
+    if (paypalRendered) return;
+    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const totalUSD = (total / 6.96).toFixed(2);
 
-    // Botón de PayPal simulado (diseño real, sin API real)
-    container.innerHTML = `
-      <div style="text-align: center; padding: 1rem; background: #f8fafc; border-radius: 0.75rem; border: 1px solid #e2e8f0;">
-        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.75rem;">
-          Pago seguro con PayPal (Simulado)
-        </p>
-        <button type="button" id="btnSimulatePayPal" style="
-          background: #0070ba; 
-          color: white; 
-          border: none; 
-          padding: 0.75rem 2rem; 
-          border-radius: 99px; 
-          font-weight: 700; 
-          font-size: 1rem; 
-          cursor: pointer; 
-          display: inline-flex; 
-          align-items: center; 
-          gap: 0.5rem;
-          transition: background 0.2s;
-        ">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.254-.93 4.778-4.005 7.201-9.138 7.201h-2.19a.563.563 0 0 0-.556.479l-1.187 7.527h-.506l-.24 1.516a.56.56 0 0 0 .554.647h3.882c.46 0 .85-.334.922-.788.06-.26.76-4.852.816-5.09a.932.932 0 0 1 .923-.788h.58c3.76 0 6.705-1.528 7.565-5.946.36-1.847.174-3.388-.777-4.471z"/></svg>
-          Pagar Bs. ${total.toFixed(2)} (≈ $${totalUSD} USD)
-        </button>
-      </div>
-    `;
-
-    document.getElementById('btnSimulatePayPal').addEventListener('click', simulatePayPalPayment);
+    if (typeof paypal === 'undefined') {
+      const script = document.createElement('script');
+      script.src = 'https://www.paypal.com/sdk/js?client-id=test&currency=USD';
+      script.onload = () => renderPayPalButtons(totalUSD);
+      document.body.appendChild(script);
+    } else {
+      renderPayPalButtons(totalUSD);
+    }
     paypalRendered = true;
   }
 
-  async function simulatePayPalPayment() {
-    const btn = document.getElementById('btnSimulatePayPal');
-    btn.disabled = true;
-    btn.textContent = 'Procesando pago...';
+  function renderPayPalButtons(totalUSD) {
+    const container = document.getElementById('paypal-button-container');
+    container.innerHTML = '';
 
-    // Simulamos un retraso de red (como si fuera real)
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    // Crear el pedido con el método 'paypal'
-    await createOrder('paypal');
+    paypal.Buttons({
+      createOrder: (data, actions) => {
+        return actions.order.create({
+          purchase_units: [{ amount: { value: totalUSD } }]
+        });
+      },
+      onApprove: async (data, actions) => {
+        await actions.order.capture();
+        await createOrder('paypal');
+      },
+      onError: (err) => {
+        console.error('Error PayPal:', err);
+        alert('El pago con PayPal falló o fue cancelado.');
+      }
+    }).render('#paypal-button-container');
   }
 
-  // --- LÓGICA PRINCIPAL DE CREACIÓN DE PEDIDO ---
+  // --- SUBMIT (para QR/Tarjeta/Efectivo) ---
   async function handleSubmit(e) {
     e.preventDefault();
     const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked')?.value;
-    
-    if (paymentMethod === 'paypal') {
-      // Si es PayPal, no hacemos nada aquí (el botón de PayPal maneja todo)
-      return;
-    }
+    if (paymentMethod === 'paypal') return; // PayPal usa su propio botón
 
     const btnSubmit = document.getElementById('btnConfirmOrder');
     btnSubmit.disabled = true;
@@ -189,9 +188,9 @@
     await createOrder(paymentMethod);
   }
 
+  // --- CREAR ORDEN CON RPC (STOCK) ---
   async function createOrder(paymentMethod) {
     const errorEl = document.getElementById('checkoutError');
-    const btnSubmit = document.getElementById('btnConfirmOrder');
     errorEl.classList.add('hidden');
 
     const deliveryType = document.querySelector('input[name="deliveryType"]:checked')?.value;
@@ -200,7 +199,6 @@
     const scheduleTime = document.getElementById('scheduleTime')?.value;
     const orderNotes = document.getElementById('orderNotes')?.value.trim() || '';
 
-    // Validaciones
     if (!deliveryType) return showError('Selecciona el tipo de entrega.');
     if (deliveryType === 'domicilio' && !deliveryAddress) return showError('Ingresa tu dirección.');
     if (!scheduleDate || !scheduleTime) return showError('Selecciona fecha y hora.');
@@ -216,8 +214,6 @@
         custom_notes: orderNotes || null
       }));
 
-      console.log('Creando pedido con RPC:', { paymentMethod, total });
-
       const { data: orderId, error: rpcError } = await window.supabase.rpc('create_order_with_stock_check', {
         p_user_id: currentUser.id,
         p_delivery_type: deliveryType,
@@ -230,15 +226,13 @@
 
       if (rpcError) {
         if (rpcError.message.includes('SOLD_OUT')) {
-          throw new Error('Lo sentimos, uno de los productos se agotó mientras completabas tu pedido. Actualiza tu carrito.');
+          throw new Error('Uno de los productos se agotó. Actualiza tu carrito.');
         }
         throw new Error(rpcError.message);
       }
 
-      console.log('Pedido creado con ID:', orderId);
-
-      // Si es QR, dejar en pendiente_pago; si es efectivo/tarjeta/paypal, confirmado
-      if (paymentMethod === 'qr') {
+      // Si es QR o efectivo, queda pendiente de confirmación del cajero
+      if (paymentMethod === 'qr' || paymentMethod === 'efectivo') {
         await window.supabase.from('orders').update({ status: 'pendiente_pago' }).eq('id', orderId);
       }
 
@@ -247,16 +241,12 @@
       window.location.replace(`/client/order-success.html?id=${orderId}`);
 
     } catch (err) {
-      console.error('Error completo:', err);
-      showError(err.message || 'Hubo un problema al procesar tu pedido.');
+      console.error('Error:', err);
+      showError(err.message || 'Error al procesar el pedido.');
+      const btnSubmit = document.getElementById('btnConfirmOrder');
       if (btnSubmit) {
         btnSubmit.disabled = false;
         btnSubmit.textContent = 'Confirmar Pedido';
-      }
-      const paypalBtn = document.getElementById('btnSimulatePayPal');
-      if (paypalBtn) {
-        paypalBtn.disabled = false;
-        paypalBtn.textContent = `Pagar Bs. ${total.toFixed(2)}`;
       }
     }
   }

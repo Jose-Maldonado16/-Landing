@@ -11,10 +11,6 @@
   <link rel="stylesheet" href="/css/styles.css" />
   <link rel="stylesheet" href="/css/dashboard.css" />
   <link rel="stylesheet" href="/css/checkout.css" />
-  <style>
-  html { background-color: #0f172a; }
-  body { background-color: #0f172a; }
-</style>
 </head>
 <body class="dashboard-body">
 
@@ -44,20 +40,14 @@
               <input type="radio" name="deliveryType" value="recojo" checked>
               <div class="radio-content">
                 <span class="radio-icon">🏪</span>
-                <div>
-                  <strong>Recojo en tienda</strong>
-                  <span>Pasa a recoger tu pedido</span>
-                </div>
+                <div><strong>Recojo en tienda</strong><span>Pasa a recoger tu pedido</span></div>
               </div>
             </label>
             <label class="radio-card">
               <input type="radio" name="deliveryType" value="domicilio">
               <div class="radio-content">
                 <span class="radio-icon">🛵</span>
-                <div>
-                  <strong>Entrega a domicilio</strong>
-                  <span>Te lo llevamos a tu puerta</span>
-                </div>
+                <div><strong>Entrega a domicilio</strong><span>Te lo llevamos a tu puerta</span></div>
               </div>
             </label>
           </div>
@@ -88,32 +78,32 @@
         <section class="checkout-section">
           <h2>3. Método de pago</h2>
           <div class="payment-grid">
-
             <label class="payment-card">
               <input type="radio" name="paymentMethod" value="qr" checked>
-              <div class="payment-content">
-                <span>📱</span> QR
-              </div>
+              <div class="payment-content"><span>📱</span> QR</div>
             </label>
             <label class="payment-card">
               <input type="radio" name="paymentMethod" value="tarjeta">
-              <div class="payment-content">
-                <span>💳</span> Tarjeta
-              </div>
+              <div class="payment-content"><span>💳</span> Tarjeta</div>
             </label>
             <label class="payment-card">
               <input type="radio" name="paymentMethod" value="efectivo">
-              <div class="payment-content">
-                <span>💵</span> Efectivo
-              </div>
+              <div class="payment-content"><span>💵</span> Efectivo</div>
             </label>
             <label class="payment-card">
               <input type="radio" name="paymentMethod" value="paypal">
               <div class="payment-content"><span>🅿️</span> PayPal</div>
             </label>
           </div>
-                    
-          <!-- Contenedor del botón de PayPal (oculto por defecto) -->
+
+          <!-- QR generado dinámicamente -->
+          <div id="qr-container" style="display: none; text-align: center; margin-top: 1rem; padding: 1rem; background: #0b1120; border-radius: 0.75rem; border: 1px solid var(--border-dark);">
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.75rem;">Escanea este QR para pagar:</p>
+            <div id="qrcode" style="display: inline-block; background: white; padding: 1rem; border-radius: 0.5rem;"></div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.75rem;">Monto: Bs. <span id="qrAmount">0.00</span></p>
+          </div>
+
+          <!-- Botón de PayPal (Sandbox) -->
           <div id="paypal-button-container" style="display: none; margin-top: 1rem;"></div>
         </section>
 
@@ -126,7 +116,6 @@
           </div>
         </section>
 
-        <!-- ERROR -->
         <div id="checkoutError" class="auth-error hidden" style="margin-bottom: 1rem;"></div>
       </div>
 
@@ -154,7 +143,9 @@
     </form>
   </main>
 
+  <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="/js/supabaseClient.js"></script>
   <script src="/js/client/checkout.js"></script>
 </body>
