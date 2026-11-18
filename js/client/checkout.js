@@ -1,6 +1,5 @@
 /* ============================================
-   CHECKOUT.JS — Crear pedido con complementos
-   anidados por instancia de producto
+   CHECKOUT.JS — Cálculo correcto de extras × cantidad
    ============================================ */
 (function() {
   let currentUser = null;
@@ -12,7 +11,6 @@
     if (!profile) return;
     currentUser = profile;
 
-    // Cargar carrito
     cart = JSON.parse(localStorage.getItem('dulcemania_cart')) || [];
     if (cart.length === 0) {
       alert('Tu carrito está vacío. Redirigiendo al menú.');
@@ -25,18 +23,29 @@
     setDateLimits();
   });
 
-  // --- RENDERIZAR RESUMEN CON EXTRAS ANIDADOS ---
+  // Helper: calcular total correcto
+  function calcularTotal() {
+    return cart.reduce((sum, item) => {
+      const base = item.price * item.quantity;
+      const extrasTotal = (item.extras || []).reduce((s, e) => s + (e.price * e.quantity * item.quantity), 0);
+      return sum + base + extrasTotal;
+    }, 0);
+  }
+
   function renderSummary() {
     const itemsContainer = document.getElementById('summaryItems');
     if (!itemsContainer) return;
 
     itemsContainer.innerHTML = cart.map(item => {
-      const extrasHtml = (item.extras || []).map(e => `
-        <div style="margin-left:1.25rem; font-size:0.8rem; color:#94a3b8; display:flex; justify-content:space-between; margin-bottom:0.2rem;">
-          <span>➕ ${e.quantity}x ${e.name}</span>
-          <span>Bs. ${(e.price * e.quantity).toFixed(2)}</span>
-        </div>
-      `).join('');
+      const extrasHtml = (item.extras || []).map(e => {
+        const totalExtras = e.quantity * item.quantity;
+        return `
+          <div style="margin-left:1.25rem; font-size:0.8rem; color:#94a3b8; display:flex; justify-content:space-between; margin-bottom:0.2rem;">
+            <span>➕ ${e.name} (${e.quantity}x por unidad = ${totalExtras} total)</span>
+            <span>Bs. ${(e.price * totalExtras).toFixed(2)}</span>
+          </div>
+        `;
+      }).join('');
 
       return `
         <div class="summary-item" style="flex-direction:column; align-items:stretch; margin-bottom:0.5rem;">
@@ -49,18 +58,11 @@
       `;
     }).join('');
 
-    // Total = (precio * cantidad de cada producto) + (precio * cantidad de cada extra)
-    const total = cart.reduce((sum, item) => {
-      const base = item.price * item.quantity;
-      const extrasTotal = (item.extras || []).reduce((s, e) => s + (e.price * e.quantity), 0);
-      return sum + base + extrasTotal;
-    }, 0);
-
+    const total = calcularTotal();
     document.getElementById('summarySubtotal').textContent = `Bs. ${total.toFixed(2)}`;
     document.getElementById('summaryTotal').textContent = `Bs. ${total.toFixed(2)}`;
   }
 
-  // --- FECHAS: HOY Y MÁXIMO +3 DÍAS ---
   function setDateLimits() {
     const dateInput = document.getElementById('scheduleDate');
     const timeInput = document.getElementById('scheduleTime');
@@ -84,9 +86,7 @@
     timeInput.value = fmtTime(now);
   }
 
-  // --- FORMULARIO: DIRECCIÓN, MÉTODO DE PAGO, QR, PAYPAL ---
   function initForm() {
-    // Dirección
     const deliveryRadios = document.querySelectorAll('input[name="deliveryType"]');
     const addressField = document.getElementById('addressField');
     const addressInput = document.getElementById('deliveryAddress');
@@ -104,7 +104,6 @@
       });
     });
 
-    // Método de pago
     const paymentRadios = document.querySelectorAll('input[name="paymentMethod"]');
     const qrContainer = document.getElementById('qr-container');
     const paypalContainer = document.getElementById('paypal-button-container');
@@ -113,8 +112,6 @@
     paymentRadios.forEach(radio => {
       radio.addEventListener('change', (e) => {
         const val = e.target.value;
-
-        // Ocultar todo
         qrContainer.style.display = 'none';
         paypalContainer.style.display = 'none';
         paypalContainer.innerHTML = '';
@@ -132,54 +129,31 @@
       });
     });
 
-    // Generar QR inicial si el método por defecto es QR
     const currentMethod = document.querySelector('input[name="paymentMethod"]:checked')?.value;
-    if (currentMethod === 'qr') {
-      generateQR();
-    }
+    if (currentMethod === 'qr') generateQR();
 
-    // Submit
-    const form = document.getElementById('checkoutForm');
-    form.addEventListener('submit', handleSubmit);
+    document.getElementById('checkoutForm').addEventListener('submit', handleSubmit);
   }
 
-  // --- GENERAR QR REAL ---
   function generateQR() {
     const qrDiv = document.getElementById('qrcode');
     if (!qrDiv || typeof QRCode === 'undefined') return;
 
-    const total = cart.reduce((sum, item) => {
-      const base = item.price * item.quantity;
-      const extrasTotal = (item.extras || []).reduce((s, e) => s + (e.price * e.quantity), 0);
-      return sum + base + extrasTotal;
-    }, 0);
-
+    const total = calcularTotal();
     document.getElementById('qrAmount').textContent = total.toFixed(2);
 
     qrDiv.innerHTML = '';
     const qrData = `DULCEMANIA-PAGO:${Date.now()}:${total.toFixed(2)}:${currentUser.id.substring(0,8)}`;
-
     new QRCode(qrDiv, {
-      text: qrData,
-      width: 200,
-      height: 200,
-      colorDark: '#0f172a',
-      colorLight: '#ffffff',
+      text: qrData, width: 200, height: 200,
+      colorDark: '#0f172a', colorLight: '#ffffff',
       correctLevel: QRCode.CorrectLevel.H
     });
   }
 
-  // --- PAYPAL SANDBOX ---
   function renderPayPalButton() {
     if (paypalRendered) return;
-
-    const total = cart.reduce((sum, item) => {
-      const base = item.price * item.quantity;
-      const extrasTotal = (item.extras || []).reduce((s, e) => s + (e.price * e.quantity), 0);
-      return sum + base + extrasTotal;
-    }, 0);
-
-    const totalUSD = (total / 6.96).toFixed(2);
+    const totalUSD = (calcularTotal() / 6.96).toFixed(2);
 
     if (typeof paypal === 'undefined') {
       const script = document.createElement('script');
@@ -195,39 +169,26 @@
   function renderPayPalButtons(totalUSD) {
     const container = document.getElementById('paypal-button-container');
     container.innerHTML = '';
-
     paypal.Buttons({
-      createOrder: (data, actions) => {
-        return actions.order.create({
-          purchase_units: [{ amount: { value: totalUSD } }]
-        });
-      },
+      createOrder: (data, actions) => actions.order.create({ purchase_units: [{ amount: { value: totalUSD } }] }),
       onApprove: async (data, actions) => {
         await actions.order.capture();
         await createOrder('paypal');
       },
-      onError: (err) => {
-        console.error('Error PayPal:', err);
-        alert('El pago con PayPal falló o fue cancelado.');
-      }
+      onError: (err) => { console.error('Error PayPal:', err); alert('El pago falló.'); }
     }).render('#paypal-button-container');
   }
 
-  // --- SUBMIT PARA MÉTODOS NO PAYPAL ---
   async function handleSubmit(e) {
     e.preventDefault();
     const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked')?.value;
-
-    if (paymentMethod === 'paypal') return; // PayPal tiene su propio botón
-
+    if (paymentMethod === 'paypal') return;
     const btnSubmit = document.getElementById('btnConfirmOrder');
     btnSubmit.disabled = true;
     btnSubmit.textContent = 'Procesando pedido...';
-
     await createOrder(paymentMethod);
   }
 
-  // --- CREAR ORDEN CON RPC (valida stock, no descuenta) ---
   async function createOrder(paymentMethod) {
     const errorEl = document.getElementById('checkoutError');
     errorEl.classList.add('hidden');
@@ -238,25 +199,17 @@
     const scheduleTime = document.getElementById('scheduleTime')?.value;
     const orderNotes = document.getElementById('orderNotes')?.value.trim() || '';
 
-    // Validaciones
     if (!deliveryType) return showError('Selecciona el tipo de entrega.');
     if (deliveryType === 'domicilio' && !deliveryAddress) return showError('Ingresa tu dirección.');
     if (!scheduleDate || !scheduleTime) return showError('Selecciona fecha y hora.');
 
     const scheduledDateTime = new Date(`${scheduleDate}T${scheduleTime}`).toISOString();
-
-    // Calcular total
-    const total = cart.reduce((sum, item) => {
-      const base = item.price * item.quantity;
-      const extrasTotal = (item.extras || []).reduce((s, e) => s + (e.price * e.quantity), 0);
-      return sum + base + extrasTotal;
-    }, 0);
+    const total = calcularTotal();
 
     try {
-      // Aplanar items: producto principal + cada extra como item separado
+      // Aplanar items: producto principal + extras multiplicados por cantidad
       const itemsJson = [];
       cart.forEach(item => {
-        // Producto principal
         itemsJson.push({
           product_id: item.product_id,
           quantity: item.quantity,
@@ -264,13 +217,12 @@
           custom_notes: orderNotes || null
         });
 
-        // Complementos (cada uno como item separado con nota)
         (item.extras || []).forEach(extra => {
           itemsJson.push({
             product_id: extra.product_id,
-            quantity: extra.quantity,
+            quantity: extra.quantity * item.quantity,
             unit_price: extra.price,
-            custom_notes: `Complemento para: ${item.name}`
+            custom_notes: `Complemento para: ${item.name} (${item.quantity}x)`
           });
         });
       });
@@ -278,7 +230,6 @@
       console.log('Items a enviar:', itemsJson);
       console.log('Total:', total);
 
-      // Llamar a la RPC
       const { data: orderId, error: rpcError } = await window.supabase.rpc('create_order_with_stock_check', {
         p_user_id: currentUser.id,
         p_delivery_type: deliveryType,
@@ -296,20 +247,16 @@
         throw new Error(rpcError.message);
       }
 
-      // Éxito
       localStorage.removeItem('dulcemania_cart');
-      alert(`✅ ¡Pedido #${orderId} confirmado!\n\nTotal: Bs. ${total.toFixed(2)}\nMétodo: ${paymentMethod.toUpperCase()}\n\n${paymentMethod === 'qr' || paymentMethod === 'efectivo' ? 'Espera a que el cajero confirme tu pago.' : 'Tu pedido ya está en preparación.'}`);
+      localStorage.removeItem('dulcemania_cart_owner');
+      alert(`✅ ¡Pedido #${orderId} confirmado!\n\nTotal: Bs. ${total.toFixed(2)}\nMétodo: ${paymentMethod.toUpperCase()}`);
       window.location.replace(`/client/order-success.html?id=${orderId}`);
 
     } catch (err) {
-      console.error('Error al crear pedido:', err);
+      console.error('Error:', err);
       showError(err.message || 'Error al procesar el pedido.');
-
       const btnSubmit = document.getElementById('btnConfirmOrder');
-      if (btnSubmit) {
-        btnSubmit.disabled = false;
-        btnSubmit.textContent = 'Confirmar Pedido';
-      }
+      if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.textContent = 'Confirmar Pedido'; }
     }
   }
 

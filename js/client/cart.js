@@ -1,6 +1,6 @@
 /* ============================================
-   CART.JS — Carrito con validación de dueño
-   y soporte para extras anidados
+   CART.JS — Carrito con validación de dueño,
+   extras anidados y cálculo correcto de totales
    ============================================ */
 (function() {
   let cart = [];
@@ -12,7 +12,6 @@
     const cartOwner = localStorage.getItem('dulcemania_cart_owner');
 
     if (cartOwner && currentUserId && cartOwner !== currentUserId) {
-      // El carrito es de otro usuario: limpiar
       console.log('Carrito de otro usuario detectado. Limpiando...');
       localStorage.removeItem('dulcemania_cart');
       localStorage.removeItem('dulcemania_cart_owner');
@@ -21,12 +20,10 @@
       cart = JSON.parse(localStorage.getItem('dulcemania_cart')) || [];
     }
 
-    // 2. Guardar dueño actual
     if (currentUserId) {
       localStorage.setItem('dulcemania_cart_owner', currentUserId);
     }
 
-    // 3. Setup UI
     updateCartUI();
     window.addEventListener('add-to-cart', (e) => addToCart(e.detail));
 
@@ -60,11 +57,8 @@
 
   function saveCart() {
     localStorage.setItem('dulcemania_cart', JSON.stringify(cart));
-    // Guardar dueño actual
     window.supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user?.id) {
-        localStorage.setItem('dulcemania_cart_owner', session.user.id);
-      }
+      if (session?.user?.id) localStorage.setItem('dulcemania_cart_owner', session.user.id);
     });
   }
 
@@ -78,20 +72,16 @@
     const stockDisponible = product.stock || 0;
 
     if (isExtra) {
-      // Es un complemento
       const parentItem = cart.find(i => i.cart_item_id === parentCartItemId);
       if (!parentItem) {
         alert('No se encontró el producto principal para este complemento.');
         return;
       }
-
       if (stockDisponible <= 0) {
         alert(`${product.name} está agotado.`);
         return;
       }
-
       if (!parentItem.extras) parentItem.extras = [];
-      
       const existingExtra = parentItem.extras.find(e => e.product_id === product.id);
       if (existingExtra) {
         existingExtra.quantity += 1;
@@ -104,13 +94,11 @@
           stock_max: stockDisponible
         });
       }
-
       saveCart();
       updateCartUI();
       return;
     }
 
-    // Producto principal
     if (stockDisponible <= 0) {
       alert(`${product.name} está agotado.`);
       return;
@@ -148,12 +136,15 @@
         const extrasHtml = (item.extras && item.extras.length > 0)
           ? `
             <div style="margin-left:1rem; margin-top:0.5rem; padding-left:0.75rem; border-left:2px solid var(--accent-500);">
-              ${item.extras.map(e => `
-                <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:var(--text-muted); margin-bottom:0.25rem;">
-                  <span>➕ ${e.name} (x${e.quantity})</span>
-                  <span>Bs. ${(e.price * e.quantity).toFixed(2)}</span>
-                </div>
-              `).join('')}
+              ${item.extras.map(e => {
+                const totalExtras = e.quantity * item.quantity;
+                return `
+                  <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:var(--text-muted); margin-bottom:0.25rem;">
+                    <span>➕ ${e.name} (${e.quantity}x por unidad = ${totalExtras} total)</span>
+                    <span>Bs. ${(e.price * totalExtras).toFixed(2)}</span>
+                  </div>
+                `;
+              }).join('')}
             </div>
           `
           : '';
@@ -179,10 +170,9 @@
       }).join('');
     }
 
-    // Total con extras
     const total = cart.reduce((sum, item) => {
       const base = item.price * item.quantity;
-      const extrasTotal = (item.extras || []).reduce((s, e) => s + (e.price * e.quantity), 0);
+      const extrasTotal = (item.extras || []).reduce((s, e) => s + (e.price * e.quantity * item.quantity), 0);
       return sum + base + extrasTotal;
     }, 0);
     totalEl.textContent = `Bs. ${total.toFixed(2)}`;
@@ -193,8 +183,19 @@
     if (!item) return;
     
     if (delta > 0 && item.quantity >= (item.stock_max || 999)) {
-      alert(`Solo hay ${item.stock_max} unidades disponibles.`);
+      alert(`Solo hay ${item.stock_max} unidades disponibles de ${item.name}.`);
       return;
+    }
+
+    // Validar stock de cada extra al aumentar
+    if (delta > 0 && item.extras && item.extras.length > 0) {
+      for (const extra of item.extras) {
+        const nuevasUnidades = extra.quantity * (item.quantity + 1);
+        if (nuevasUnidades > (extra.stock_max || 999)) {
+          alert(`No hay suficiente stock de ${extra.name}. Solo hay ${extra.stock_max} disponibles.`);
+          return;
+        }
+      }
     }
     
     item.quantity += delta;
