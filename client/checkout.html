@@ -88,6 +88,7 @@
         <section class="checkout-section">
           <h2>3. Método de pago</h2>
           <div class="payment-grid">
+
             <label class="payment-card">
               <input type="radio" name="paymentMethod" value="qr" checked>
               <div class="payment-content">
@@ -106,7 +107,14 @@
                 <span>💵</span> Efectivo
               </div>
             </label>
+            <label class="payment-card">
+              <input type="radio" name="paymentMethod" value="paypal">
+              <div class="payment-content"><span>🅿️</span> PayPal</div>
+            </label>
           </div>
+                    
+          <!-- Contenedor del botón de PayPal (oculto por defecto) -->
+          <div id="paypal-button-container" style="display: none; margin-top: 1rem;"></div>
         </section>
 
         <!-- Notas -->
