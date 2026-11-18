@@ -86,6 +86,18 @@
 
   </div>
 
+    <!-- MODAL DE EXTRAS/COMPLEMENTOS -->
+  <div id="extrasModal" class="modal-overlay" style="position:fixed; inset:0; background:rgba(0,0,0,0.8); backdrop-filter:blur(4px); z-index:1000; display:none; align-items:center; justify-content:center; padding:1rem;">
+    <div class="modal-box" style="background:var(--card-dark); border-radius:1rem; padding:2rem; width:100%; max-width:500px; max-height:90vh; overflow-y:auto; border:1px solid var(--border-dark);">
+      <h2 id="extrasTitle" style="margin-bottom:1.5rem; font-size:1.25rem; font-weight:800; color:var(--text-main);">Complementos</h2>
+      <form id="extrasForm"></form>
+      <button type="button" id="btnCloseExtras" class="btn btn--outline" style="width:100%; margin-top:1rem;">Cancelar</button>
+    </div>
+  </div>
+
+  <style>
+    .modal-overlay.active { display: flex !important; }
+  </style>
   <!-- SCRIPTS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/js/supabaseClient.js"></script>

@@ -1,5 +1,5 @@
 /* ============================================
-   CART.JS — Carrito con límite de stock
+   CART.JS — Carrito con soporte para complementos
    ============================================ */
 (function() {
   let cart = JSON.parse(localStorage.getItem('dulcemania_cart')) || [];
@@ -39,7 +39,8 @@
   function saveCart() { localStorage.setItem('dulcemania_cart', JSON.stringify(cart)); }
 
   function addToCart(product) {
-    const existing = cart.find(i => i.product_id === product.id);
+    const isExtra = product.is_extra === true;
+    const existing = cart.find(i => i.product_id === product.id && i.is_extra === isExtra);
     const stockDisponible = product.stock || 0;
     
     if (existing) {
@@ -59,7 +60,9 @@
         price: product.price, 
         image_url: product.image_url, 
         quantity: 1,
-        stock_max: stockDisponible
+        stock_max: stockDisponible,
+        is_extra: isExtra,
+        parent_product: product.parent_product || null
       });
     }
     saveCart();
@@ -79,21 +82,60 @@
     if (cart.length === 0) {
       itemsContainer.innerHTML = `<p style="text-align:center;color:#64748b;margin-top:2rem;">Tu carrito está vacío.</p>`;
     } else {
-      itemsContainer.innerHTML = cart.map(item => `
-        <div class="cart-item">
-          <img src="${item.image_url}" class="cart-item-img" alt="${item.name}">
-          <div class="cart-item-info">
-            <p class="cart-item-title">${item.name}</p>
-            <p class="cart-item-price">Bs. ${item.price} c/u</p>
-            <div class="cart-item-actions">
-              <button class="cart-qty-btn" onclick="window.__changeQty(${item.product_id}, -1)">-</button>
-              <span class="cart-qty">${item.quantity}</span>
-              <button class="cart-qty-btn" onclick="window.__changeQty(${item.product_id}, 1)">+</button>
+      // Agrupar: primero productos principales, luego sus complementos
+      const principales = cart.filter(i => !i.is_extra);
+      const extras = cart.filter(i => i.is_extra);
+
+      itemsContainer.innerHTML = principales.map(item => {
+        const extrasDeEste = extras.filter(e => e.parent_product === item.name);
+        
+        return `
+          <div class="cart-item" style="flex-direction:column; align-items:stretch;">
+            <div style="display:flex; gap:0.75rem; align-items:center;">
+              <img src="${item.image_url}" class="cart-item-img" alt="${item.name}">
+              <div class="cart-item-info" style="flex:1;">
+                <p class="cart-item-title">${item.name}</p>
+                <p class="cart-item-price">Bs. ${item.price} c/u</p>
+                <div class="cart-item-actions">
+                  <button class="cart-qty-btn" onclick="window.__changeQty(${item.product_id}, -1)">-</button>
+                  <span class="cart-qty">${item.quantity}</span>
+                  <button class="cart-qty-btn" onclick="window.__changeQty(${item.product_id}, 1)">+</button>
+                </div>
+              </div>
+              <button class="cart-item-remove" onclick="window.__removeItem(${item.product_id})">🗑️</button>
             </div>
+            ${extrasDeEste.length > 0 ? `
+              <div style="margin-left:2rem; margin-top:0.5rem; padding-left:0.75rem; border-left:2px solid var(--accent-500);">
+                ${extrasDeEste.map(e => `
+                  <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; color:var(--text-muted); margin-bottom:0.25rem;">
+                    <span>➕ ${e.name} (x${e.quantity})</span>
+                    <span>Bs. ${(e.price * e.quantity).toFixed(2)}</span>
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
           </div>
-          <button class="cart-item-remove" onclick="window.__removeItem(${item.product_id})">🗑️</button>
-        </div>
-      `).join('');
+        `;
+      }).join('');
+
+      // Extras huérfanos (sin producto principal)
+      const extrasHuerfanos = extras.filter(e => !principales.some(p => p.name === e.parent_product));
+      if (extrasHuerfanos.length > 0) {
+        itemsContainer.innerHTML += `
+          <div style="margin-top:1rem; padding-top:1rem; border-top:1px dashed var(--border-dark);">
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Complementos sueltos:</p>
+            ${extrasHuerfanos.map(e => `
+              <div class="cart-item">
+                <div class="cart-item-info">
+                  <p class="cart-item-title">${e.name}</p>
+                  <p class="cart-item-price">Bs. ${e.price} c/u</p>
+                </div>
+                <button class="cart-item-remove" onclick="window.__removeItem(${e.product_id})">🗑️</button>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
     }
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     totalEl.textContent = `Bs. ${total.toFixed(2)}`;
@@ -109,7 +151,9 @@
     }
     
     item.quantity += delta;
-    if (item.quantity <= 0) cart = cart.filter(i => i.product_id !== id);
+    if (item.quantity <= 0) {
+      cart = cart.filter(i => i.product_id !== id);
+    }
     saveCart();
     updateCartUI();
   };

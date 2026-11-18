@@ -1,8 +1,10 @@
 /* ============================================
-   CATALOG.JS — Catálogo con stock visible en tiempo real
+   CATALOG.JS — Catálogo con extras (complementos)
    ============================================ */
 (function() {
   let allProducts = [];
+  let allComplementos = [];
+  let currentProductForExtra = null;
 
   document.addEventListener('DOMContentLoaded', async () => {
     const profile = await window.guardPage(['client', 'admin', 'staff']);
@@ -21,7 +23,9 @@
     document.getElementById('btnLogout')?.addEventListener('click', () => window.logoutUser());
 
     await loadProducts();
+    await loadComplementos();
     initFilters();
+    initExtrasModal();
     initRealtime();
   });
 
@@ -30,7 +34,12 @@
     if (!grid) return;
 
     try {
-      const { data, error } = await window.supabase.from('products').select('*').order('id');
+      const { data, error } = await window.supabase
+        .from('products')
+        .select('*')
+        .neq('category', 'complementos') // Excluir complementos del catálogo principal
+        .order('id');
+      
       if (error) throw error;
       
       allProducts = data || [];
@@ -46,11 +55,25 @@
     }
   }
 
+  async function loadComplementos() {
+    const { data, error } = await window.supabase
+      .from('products')
+      .select('*')
+      .eq('category', 'complementos')
+      .order('id');
+    
+    if (!error) {
+      allComplementos = data || [];
+    }
+  }
+
   function renderProducts(products) {
     const grid = document.getElementById('productGrid');
     
     grid.innerHTML = products.map(p => {
       const isOutOfStock = !p.is_available || p.stock <= 0;
+      const hasExtras = allComplementos.length > 0;
+      
       return `
         <article class="dash-product-card">
           <img src="${p.image_url || 'https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?auto=format&fit=crop&w=600&q=80'}" class="dash-product-img" loading="lazy" alt="${p.name}" />
@@ -62,15 +85,21 @@
             </div>
             <div class="dash-product-footer">
               <span class="dash-product-price">Bs. ${p.price}</span>
-              <button class="dash-product-btn btn-add-cart" data-id="${p.id}" ${isOutOfStock ? 'disabled' : ''}>
-                ${isOutOfStock ? 'Agotado' : '+ Agregar'}
-              </button>
+              <div style="display:flex; gap:0.35rem;">
+                <button class="dash-product-btn btn-add-cart" data-id="${p.id}" ${isOutOfStock ? 'disabled' : ''} style="padding:0.5rem 0.75rem;">
+                  ${isOutOfStock ? 'Agotado' : '+ Agregar'}
+                </button>
+                ${hasExtras && !isOutOfStock ? `
+                  <button class="btn-extras" data-id="${p.id}" title="Agregar complementos" style="background: rgba(245,158,11,0.2); color: #fcd34d; border: none; border-radius: 99px; padding: 0.5rem 0.75rem; cursor: pointer; font-weight: 700; font-size: 0.8rem;">➕ Extras</button>
+                ` : ''}
+              </div>
             </div>
           </div>
         </article>
       `;
     }).join('');
 
+    // Botón de agregar al carrito
     document.querySelectorAll('.btn-add-cart').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = parseInt(btn.dataset.id);
@@ -78,6 +107,15 @@
         if (product) {
           window.dispatchEvent(new CustomEvent('add-to-cart', { detail: product }));
         }
+      });
+    });
+
+    // Botón de abrir extras
+    document.querySelectorAll('.btn-extras').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = parseInt(btn.dataset.id);
+        const product = allProducts.find(p => p.id === id);
+        if (product) openExtrasModal(product);
       });
     });
   }
@@ -95,7 +133,74 @@
     });
   }
 
-  // Realtime: actualizar stock si alguien más compra
+  // --- MODAL DE EXTRAS ---
+  function initExtrasModal() {
+    const modal = document.getElementById('extrasModal');
+    if (!modal) return;
+
+    const closeBtn = document.getElementById('btnCloseExtras');
+    if (closeBtn) closeBtn.addEventListener('click', () => modal.classList.remove('active'));
+
+    const form = document.getElementById('extrasForm');
+    if (form) {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const checkboxes = form.querySelectorAll('input[name="extras"]:checked');
+        const selectedExtras = Array.from(checkboxes).map(cb => {
+          return allComplementos.find(c => c.id === parseInt(cb.value));
+        }).filter(Boolean);
+
+        if (selectedExtras.length === 0) {
+          alert('Selecciona al menos un complemento.');
+          return;
+        }
+
+        // Enviar cada extra como un item adicional del carrito
+        selectedExtras.forEach(extra => {
+          window.dispatchEvent(new CustomEvent('add-to-cart', { 
+            detail: { ...extra, is_extra: true, parent_product: currentProductForExtra.name }
+          }));
+        });
+
+        modal.classList.remove('active');
+        alert(`✅ Complementos agregados a ${currentProductForExtra.name}`);
+      });
+    }
+  }
+
+  function openExtrasModal(product) {
+    currentProductForExtra = product;
+    const modal = document.getElementById('extrasModal');
+    const title = document.getElementById('extrasTitle');
+    const form = document.getElementById('extrasForm');
+    if (!modal || !title || !form) return;
+
+    title.textContent = `Complementos para: ${product.name}`;
+
+    // Renderizar checkboxes de complementos disponibles
+    const disponibles = allComplementos.filter(c => c.is_available && c.stock > 0);
+    if (disponibles.length === 0) {
+      form.innerHTML = `<p style="text-align:center;color:var(--text-muted);">No hay complementos disponibles.</p>`;
+      modal.classList.add('active');
+      return;
+    }
+
+    form.innerHTML = disponibles.map(c => `
+      <label style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; background:#0b1120; border-radius:0.5rem; margin-bottom:0.5rem; cursor:pointer; border:1px solid var(--border-dark);">
+        <input type="checkbox" name="extras" value="${c.id}" style="width:20px; height:20px; cursor:pointer;">
+        <div style="flex:1;">
+          <div style="font-weight:700; color:var(--text-main);">${c.name}</div>
+          <div style="font-size:0.8rem; color:var(--text-muted);">${c.description || ''}</div>
+        </div>
+        <div style="font-weight:800; color:var(--brand-500);">+ Bs. ${c.price}</div>
+      </label>
+    `).join('') + `
+      <button type="submit" class="btn btn--primary" style="width:100%; margin-top:1rem;">Agregar Seleccionados</button>
+    `;
+
+    modal.classList.add('active');
+  }
+
   function initRealtime() {
     window.supabase
       .channel('products-stock')
@@ -107,6 +212,9 @@
           const filtered = activeFilter === 'all' ? allProducts : allProducts.filter(p => p.category === activeFilter);
           renderProducts(filtered);
         }
+        // Actualizar también los complementos si cambió su stock
+        const idxC = allComplementos.findIndex(c => c.id === payload.new.id);
+        if (idxC !== -1) allComplementos[idxC] = payload.new;
       })
       .subscribe();
   }

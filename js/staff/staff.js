@@ -355,18 +355,21 @@
     }
 
     let totalCalculado = 0;
-    document.getElementById('detailOrderItems').innerHTML = items.map(i => {
-      totalCalculado += Number(i.subtotal);
-      const name = i.products?.name || 'Producto';
-      return `
-        <div style="padding:0.5rem 0; border-bottom:1px solid var(--border-dark);">
-          <div style="display:flex; justify-content:space-between;">
-            <strong>${i.quantity} x ${name}</strong>
-            <span>Bs. ${i.subtotal}</span>
-          </div>
-          ${i.custom_notes ? `<div style="font-size:0.8rem; color:var(--accent-500); margin-top:0.25rem;">📝 ${i.custom_notes}</div>` : ''}
-        </div>
-      `;
+document.getElementById('detailOrderItems').innerHTML = items.map(i => {
+  totalCalculado += Number(i.subtotal);
+  const name = i.products?.name || 'Producto';
+  const isComplemento = i.custom_notes?.startsWith('Complemento para');
+  
+  return `
+    <div style="padding:0.5rem 0; border-bottom:1px solid var(--border-dark); ${isComplemento ? 'margin-left:1.5rem; border-left:2px solid var(--accent-500); padding-left:0.75rem;' : ''}">
+      <div style="display:flex; justify-content:space-between;">
+        <strong>${isComplemento ? '➕ ' : ''}${i.quantity} x ${name}</strong>
+        <span>Bs. ${i.subtotal}</span>
+      </div>
+      ${i.custom_notes && !isComplemento ? `<div style="font-size:0.8rem; color:var(--accent-500); margin-top:0.25rem;">📝 ${i.custom_notes}</div>` : ''}
+    </div>
+  `;
+
     }).join('') + `
       <div style="display:flex; justify-content:space-between; margin-top:1rem; padding-top:0.5rem; border-top:2px solid var(--border-dark); font-weight:800;">
         <span>Total</span>

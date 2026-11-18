@@ -194,7 +194,7 @@
         product_id: item.product_id,
         quantity: item.quantity,
         unit_price: item.price,
-        custom_notes: orderNotes || null
+        custom_notes: item.is_extra ? `Complemento para: ${item.parent_product}` : (orderNotes || null)
       }));
 
       // La función RPC valida stock, determina estado inicial y crea el pedido.
