@@ -1,5 +1,5 @@
 /* ============================================
-   SUPABASE CLIENT (Global V3 - Anti-bucle)
+   SUPABASE CLIENT (Global)
    ============================================ */
 const SUPABASE_URL = 'https://anbgtfhewdzqikkashpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_zB8Vj1t6WWAd6G68k5-Bbw_Z0HvjD5h';
@@ -16,7 +16,6 @@ window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABL
 window.getCurrentProfile = async function() {
   try {
     const { data: { session }, error: sessionError } = await window.supabase.auth.getSession();
-    
     if (sessionError || !session) return null;
 
     const { data, error } = await window.supabase
@@ -58,7 +57,10 @@ window.guardPage = async function(allowedRoles = ['client', 'admin', 'staff']) {
   return profile;
 };
 
+// 🧹 Logout limpia el carrito completo
 window.logoutUser = async function() {
+  localStorage.removeItem('dulcemania_cart');
+  localStorage.removeItem('dulcemania_cart_owner');
   await window.supabase.auth.signOut();
   window.location.replace('/login.html');
 };

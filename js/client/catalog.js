@@ -1,5 +1,6 @@
 /* ============================================
-   CATALOG.JS — Catálogo con instancias únicas para extras
+   CATALOG.JS — Catálogo con extras (complementos)
+   CORREGIDO: carga complementos antes de productos
    ============================================ */
 (function() {
   let allProducts = [];
@@ -23,8 +24,10 @@
 
     document.getElementById('btnLogout')?.addEventListener('click', () => window.logoutUser());
 
-    await loadProducts();
+    // ⚠️ ORDEN CORREGIDO: primero complementos, luego productos
     await loadComplementos();
+    await loadProducts();
+
     initFilters();
     initExtrasModal();
     initRealtime();
@@ -63,7 +66,10 @@
       .eq('category', 'complementos')
       .order('id');
     
-    if (!error) allComplementos = data || [];
+    if (!error) {
+      allComplementos = data || [];
+      console.log('Complementos cargados:', allComplementos.length);
+    }
   }
 
   function renderProducts(products) {
@@ -98,6 +104,7 @@
       `;
     }).join('');
 
+    // Event listeners
     document.querySelectorAll('.btn-add-cart').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = parseInt(btn.dataset.id);
@@ -156,7 +163,6 @@
           return;
         }
 
-        // Agregar cada extra asociado al cart_item_id del producto
         selectedExtras.forEach(extra => {
           window.dispatchEvent(new CustomEvent('add-to-cart', { 
             detail: { 
@@ -181,11 +187,10 @@
     const form = document.getElementById('extrasForm');
     if (!modal || !title || !form) return;
 
-    // 1. Primero agregar el producto principal al carrito
+    // 1. Agregar el producto principal al carrito
     window.dispatchEvent(new CustomEvent('add-to-cart', { detail: product }));
 
-    // 2. Obtener el cart_item_id del último producto agregado (el que acabamos de agregar)
-    // Leemos del localStorage porque cart.js ya lo guardó
+    // 2. Obtener el cart_item_id del último producto agregado
     const currentCart = JSON.parse(localStorage.getItem('dulcemania_cart')) || [];
     const lastItem = currentCart[currentCart.length - 1];
     if (!lastItem) {

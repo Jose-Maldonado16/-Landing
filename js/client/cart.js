@@ -1,11 +1,32 @@
 /* ============================================
-   CART.JS — Carrito con instancias únicas
-   (permite el mismo producto con diferentes extras)
+   CART.JS — Carrito con validación de dueño
+   y soporte para extras anidados
    ============================================ */
 (function() {
-  let cart = JSON.parse(localStorage.getItem('dulcemania_cart')) || [];
+  let cart = [];
 
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Validar dueño del carrito
+    const { data: { session } } = await window.supabase.auth.getSession();
+    const currentUserId = session?.user?.id || null;
+    const cartOwner = localStorage.getItem('dulcemania_cart_owner');
+
+    if (cartOwner && currentUserId && cartOwner !== currentUserId) {
+      // El carrito es de otro usuario: limpiar
+      console.log('Carrito de otro usuario detectado. Limpiando...');
+      localStorage.removeItem('dulcemania_cart');
+      localStorage.removeItem('dulcemania_cart_owner');
+      cart = [];
+    } else {
+      cart = JSON.parse(localStorage.getItem('dulcemania_cart')) || [];
+    }
+
+    // 2. Guardar dueño actual
+    if (currentUserId) {
+      localStorage.setItem('dulcemania_cart_owner', currentUserId);
+    }
+
+    // 3. Setup UI
     updateCartUI();
     window.addEventListener('add-to-cart', (e) => addToCart(e.detail));
 
@@ -37,9 +58,16 @@
     });
   });
 
-  function saveCart() { localStorage.setItem('dulcemania_cart', JSON.stringify(cart)); }
+  function saveCart() {
+    localStorage.setItem('dulcemania_cart', JSON.stringify(cart));
+    // Guardar dueño actual
+    window.supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.id) {
+        localStorage.setItem('dulcemania_cart_owner', session.user.id);
+      }
+    });
+  }
 
-  // Genera un ID único para cada instancia del carrito
   function generateCartItemId() {
     return `cart_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
   }
@@ -50,7 +78,7 @@
     const stockDisponible = product.stock || 0;
 
     if (isExtra) {
-      // Es un complemento: se asocia a un cart_item_id existente
+      // Es un complemento
       const parentItem = cart.find(i => i.cart_item_id === parentCartItemId);
       if (!parentItem) {
         alert('No se encontró el producto principal para este complemento.');
@@ -62,7 +90,6 @@
         return;
       }
 
-      // Agregar como sub-item dentro de parentItem.extras
       if (!parentItem.extras) parentItem.extras = [];
       
       const existingExtra = parentItem.extras.find(e => e.product_id === product.id);
@@ -83,7 +110,7 @@
       return;
     }
 
-    // Es un producto principal: cada uno es una instancia única
+    // Producto principal
     if (stockDisponible <= 0) {
       alert(`${product.name} está agotado.`);
       return;
@@ -152,7 +179,7 @@
       }).join('');
     }
 
-    // Calcular total incluyendo extras
+    // Total con extras
     const total = cart.reduce((sum, item) => {
       const base = item.price * item.quantity;
       const extrasTotal = (item.extras || []).reduce((s, e) => s + (e.price * e.quantity), 0);
