@@ -14,9 +14,10 @@
   <style>
     @keyframes spin { 100% { transform: rotate(360deg); } }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes pulse-border { 0%, 100% { border-color: var(--border-dark); } 50% { border-color: #3b82f6; } }
     
     /* ============================================
-       ESTILOS ESPECÍFICOS DEL STAFF (DARK MODE)
+       ESTILOS ESPECÍFICOS DEL STAFF (DARK MODE V2)
        ============================================ */
     .kanban-grid {
       display: grid;
@@ -49,45 +50,75 @@
       border-radius: 99px; 
     }
     
+    /* Tarjetas de pedido */
     .order-card {
       background: #0b1120;
       border-radius: 0.75rem;
       padding: 1rem;
       margin-bottom: 0.75rem;
       border: 1px solid var(--border-dark);
-      transition: transform 0.2s, border-color 0.2s;
+      border-left: 4px solid var(--border-dark);
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
       cursor: pointer;
     }
-    .order-card:hover { border-color: var(--brand-500); transform: translateY(-2px); }
+    .order-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+    
+    /* Bordes de color por estado */
+    .order-card--pendiente_pago { border-left-color: #3b82f6; animation: pulse-border 2s infinite; }
+    .order-card--confirmado { border-left-color: #93c5fd; }
+    .order-card--en_preparacion { border-left-color: #f59e0b; }
+    .order-card--listo { border-left-color: #10b981; box-shadow: 0 0 0 1px rgba(16,185,129,0.3); }
+    
     .order-card-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem; }
-    .order-id { font-weight: 800; color: var(--brand-500); }
-    .order-time { font-size: 0.75rem; color: var(--text-muted); }
-    .order-client { font-weight: 600; color: var(--text-main); font-size: 0.9rem; margin-bottom: 0.25rem; }
+    .order-id { font-weight: 800; color: var(--brand-500); font-size: 1.1rem; }
+    .order-time { font-size: 0.75rem; color: var(--text-muted); background: #1e293b; padding: 2px 6px; border-radius: 4px; }
+    .order-client { font-weight: 700; color: var(--text-main); font-size: 1rem; margin-bottom: 0.25rem; }
     .order-details { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; }
-    .order-total { font-weight: 700; color: var(--text-main); margin-bottom: 0.75rem; }
-    .order-hint { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+    .order-total { font-weight: 800; color: #f59e0b; font-size: 1.2rem; margin-bottom: 0.5rem; }
+    .order-hint { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.75rem; font-style: italic; }
     
     .order-actions { display: flex; gap: 0.5rem; }
     .btn-sm-action {
       flex: 1;
-      padding: 0.5rem;
-      border-radius: 6px;
+      padding: 0.6rem;
+      border-radius: 8px;
       border: none;
       font-weight: 700;
-      font-size: 0.75rem;
+      font-size: 0.85rem;
       cursor: pointer;
-      transition: 0.2s;
+      transition: all 0.2s;
     }
+    .btn-sm-action:hover { transform: translateY(-1px); }
     .btn-prepare { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
     .btn-prepare:hover { background: rgba(245, 158, 11, 0.3); }
     .btn-ready { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
     .btn-ready:hover { background: rgba(16, 185, 129, 0.3); }
-    .btn-deliver { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
-    .btn-deliver:hover { background: rgba(148, 163, 184, 0.3); }
-    .btn-pay { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
-    .btn-pay:hover { background: rgba(59, 130, 246, 0.3); }
+    .btn-deliver { background: rgba(16, 185, 129, 0.25); color: #6ee7b7; font-size: 0.9rem; }
+    .btn-deliver:hover { background: rgba(16, 185, 129, 0.4); }
+    .btn-pay { background: rgba(59, 130, 246, 0.25); color: #93c5fd; font-size: 0.9rem; }
+    .btn-pay:hover { background: rgba(59, 130, 246, 0.4); }
 
-    .empty-col { text-align: center; color: var(--text-muted); padding: 2rem 0; font-size: 0.85rem; }
+    .empty-col { text-align: center; color: var(--text-muted); padding: 2rem 0; font-size: 0.85rem; font-style: italic; }
+    
+    /* Tarjetas de resumen (KPIs) */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .kpi-card {
+      background: var(--card-dark);
+      border: 1px solid var(--border-dark);
+      border-radius: 1rem;
+      padding: 1.25rem;
+      text-align: center;
+    }
+    .kpi-label { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .kpi-value { font-size: 1.8rem; font-weight: 800; color: var(--text-main); margin-top: 0.25rem; }
+    .kpi-card--blue .kpi-value { color: #93c5fd; }
+    .kpi-card--green .kpi-value { color: #6ee7b7; }
+    .kpi-card--yellow .kpi-value { color: #fcd34d; }
     
     /* Modal */
     .modal-overlay { 
@@ -143,12 +174,28 @@
 
     <main class="container dash-main">
       <section class="dash-header">
-        <h1 class="dash-title" id="pageTitle">Panel de Cocina y Caja</h1>
-        <p class="dash-subtitle" id="pageSubtitle">Gestiona los pedidos en tiempo real.</p>
+        <h1 class="dash-title" id="pageTitle">Panel de Caja y Despacho</h1>
+        <p class="dash-subtitle" id="pageSubtitle">Confirma pagos y entrega los pedidos listos.</p>
       </section>
 
+      <!-- KPIs DEL CAJERO -->
+      <div class="kpi-grid" id="kpiGrid">
+        <div class="kpi-card kpi-card--blue">
+          <div class="kpi-label">Por Cobrar</div>
+          <div class="kpi-value" id="kpiPendientes">0</div>
+        </div>
+        <div class="kpi-card kpi-card--green">
+          <div class="kpi-label">Listos para Entregar</div>
+          <div class="kpi-value" id="kpiListos">0</div>
+        </div>
+        <div class="kpi-card kpi-card--yellow">
+          <div class="kpi-label">Total del Día</div>
+          <div class="kpi-value" id="kpiTotalDia">Bs. 0</div>
+        </div>
+      </div>
+
       <div class="kanban-grid" id="kanbanGrid">
-        <!-- COLUMNA: PENDIENTES DE PAGO (Solo Cajero) -->
+        <!-- COLUMNA: PENDIENTES DE PAGO -->
         <div class="kanban-col" data-role="cashier" id="colPendientePago" style="display:none;">
           <div class="kanban-header">
             <span class="kanban-title">💳 Pendientes de Pago</span>

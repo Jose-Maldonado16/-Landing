@@ -1,5 +1,5 @@
 /* ============================================
-   STAFF.JS — Roles + nombre cliente + botón entregar
+   STAFF.JS — Panel mejorado con KPIs y flujo completo
    ============================================ */
 (function() {
   let allOrders = [];
@@ -21,7 +21,6 @@
     document.getElementById('appWrapper').style.display = 'block';
     document.getElementById('userName').textContent = profile.full_name || 'Staff';
 
-    // Ajustar título / badge
     const pageTitle = document.getElementById('pageTitle');
     const pageSubtitle = document.getElementById('pageSubtitle');
     const roleBadge = document.getElementById('roleBadge');
@@ -74,6 +73,9 @@
       listo: document.getElementById('colListo')
     };
 
+    // La columna de "Listos" SIEMPRE visible para todos los roles
+    if (cols.listo) cols.listo.style.display = 'block';
+
     if (staffRole === 'admin') {
       Object.values(cols).forEach(c => { if (c) c.style.display = 'block'; });
       return;
@@ -81,16 +83,13 @@
     if (staffRole === 'cashier') {
       if (cols.pendientePago) cols.pendientePago.style.display = 'block';
       if (cols.confirmado) cols.confirmado.style.display = 'block';
-      if (cols.listo) cols.listo.style.display = 'block';
     }
     if (staffRole === 'kitchen') {
       if (cols.confirmado) cols.confirmado.style.display = 'block';
       if (cols.preparacion) cols.preparacion.style.display = 'block';
-      if (cols.listo) cols.listo.style.display = 'block';
     }
   }
 
-  // --- CARGAR PEDIDOS CON NOMBRE DEL CLIENTE (RPC) ---
   async function loadOrders() {
     let statusFilter;
     if (staffRole === 'admin') statusFilter = ['pendiente_pago', 'confirmado', 'en_preparacion', 'listo'];
@@ -102,7 +101,6 @@
 
     if (error) {
       console.error('Error:', error);
-      // Fallback: query normal sin nombre
       const { data: fallback } = await window.supabase
         .from('orders')
         .select('*')
@@ -114,6 +112,21 @@
     }
 
     renderKanban();
+    updateKPIs();
+  }
+
+  function updateKPIs() {
+    const pendientes = allOrders.filter(o => o.status === 'pendiente_pago');
+    const listos = allOrders.filter(o => o.status === 'listo');
+    
+    document.getElementById('kpiPendientes').textContent = pendientes.length;
+    document.getElementById('kpiListos').textContent = listos.length;
+
+    // Total del día (solo pedidos con estado != cancelado)
+    const today = new Date().toISOString().split('T')[0];
+    const ordersToday = allOrders.filter(o => o.created_at && o.created_at.startsWith(today));
+    const totalDia = ordersToday.reduce((sum, o) => sum + Number(o.total), 0);
+    document.getElementById('kpiTotalDia').textContent = `Bs. ${totalDia.toFixed(2)}`;
   }
 
   function renderKanban() {
@@ -149,17 +162,17 @@
   }
 
   function renderOrderCard(o) {
-    // USAR client_name que viene del RPC
     const clientName = o.client_name || 'Cliente';
     const time = new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const deliveryText = o.delivery_type === 'domicilio' ? '🛵 Domicilio' : '🏪 Recojo';
     
     let actionBtn = '';
+    
     if (o.status === 'pendiente_pago') {
       if (staffRole === 'cashier' || staffRole === 'admin') {
         actionBtn = `<button class="btn-sm-action btn-pay" onclick="event.stopPropagation(); window.__confirmPayment(${o.id})">💰 Confirmar Pago</button>`;
       } else {
-        actionBtn = `<span style="font-size:0.75rem;color:#93c5fd;">Esperando pago...</span>`;
+        actionBtn = `<span style="font-size:0.8rem;color:#93c5fd;">⏳ Esperando pago...</span>`;
       }
     } else if (o.status === 'confirmado') {
       if (staffRole === 'kitchen' || staffRole === 'admin') {
@@ -167,24 +180,21 @@
       } else if (staffRole === 'cashier' && o.payment_method === 'efectivo') {
         actionBtn = `<button class="btn-sm-action btn-pay" onclick="event.stopPropagation(); window.__confirmPayment(${o.id})">💵 Cobrar</button>`;
       } else {
-        actionBtn = `<span style="font-size:0.75rem;color:#93c5fd;">Esperando cocina...</span>`;
+        actionBtn = `<span style="font-size:0.8rem;color:#93c5fd;">⏳ Esperando cocina...</span>`;
       }
     } else if (o.status === 'en_preparacion') {
       if (staffRole === 'kitchen' || staffRole === 'admin') {
         actionBtn = `<button class="btn-sm-action btn-ready" onclick="event.stopPropagation(); window.__changeStatus(${o.id}, 'listo')">✅ Marcar Listo</button>`;
       } else {
-        actionBtn = `<span style="font-size:0.75rem;color:#fcd34d;">En cocina...</span>`;
+        actionBtn = `<span style="font-size:0.8rem;color:#fcd34d;">⏳ En cocina...</span>`;
       }
     } else if (o.status === 'listo') {
-      if (staffRole === 'cashier' || staffRole === 'admin') {
-        actionBtn = `<button class="btn-sm-action btn-deliver" onclick="event.stopPropagation(); window.__changeStatus(${o.id}, 'entregado')">📦 Entregar</button>`;
-      } else {
-        actionBtn = `<span style="font-size:0.75rem;color:#6ee7b7;">Listo para entregar</span>`;
-      }
+      // Cualquier staff puede entregar
+      actionBtn = `<button class="btn-sm-action btn-deliver" onclick="event.stopPropagation(); window.__changeStatus(${o.id}, 'entregado')">📦 Marcar Entregado</button>`;
     }
 
     return `
-      <div class="order-card" onclick="window.__viewOrderDetail(${o.id})">
+      <div class="order-card order-card--${o.status}" onclick="window.__viewOrderDetail(${o.id})">
         <div class="order-card-header">
           <span class="order-id">#${o.id}</span>
           <span class="order-time">${time}</span>
@@ -204,6 +214,7 @@
       allOrders[idx].status = newStatus;
       if (newStatus === 'entregado') allOrders.splice(idx, 1);
       renderKanban();
+      updateKPIs();
     }
 
     const updateData = { status: newStatus };
@@ -228,7 +239,7 @@
       .update({ status: 'confirmado' })
       .eq('id', orderId);
     if (error) alert('Error: ' + error.message);
-    else { alert('✅ Pago confirmado.'); await loadOrders(); }
+    else { alert('✅ Pago confirmado. El pedido pasará a cocina.'); await loadOrders(); }
   };
 
   window.__viewOrderDetail = async (orderId) => {
@@ -278,7 +289,7 @@
         </div>
       `;
     }).join('') + `
-      <div style="display:flex; justify-content:space-between; margin-top:1rem; padding-top:0.5rem; border-top:2px solid var(--border-dark); font-weight:800;">
+      <div style="display:flex; justify-content:space-between; margin-top:1rem; padding-top:0.5rem; border-top:2px solid var(--border-dark); font-weight:800; font-size:1.1rem;">
         <span>Total</span>
         <span style="color:var(--brand-500);">Bs. ${totalCalculado.toFixed(2)}</span>
       </div>
