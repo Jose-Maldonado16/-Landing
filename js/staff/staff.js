@@ -1,6 +1,6 @@
 /* ============================================
-   STAFF.JS — Separación total de roles
-   (Cocina vs Cajero) con lógica de stock
+   STAFF.JS — Separación de roles + cancelación
+   de pedidos pendientes con devolución de stock
    ============================================ */
 (function() {
   let allOrders = [];
@@ -12,23 +12,31 @@
     if (!profile) return;
     staffProfile = profile;
 
-    if (profile.role === 'admin') staffRole = 'admin';
-    else staffRole = profile.staff_role || 'kitchen';
+    if (profile.role === 'admin') {
+      staffRole = 'admin';
+    } else {
+      staffRole = profile.staff_role || 'kitchen';
+    }
 
+    // Mostrar UI
     document.getElementById('appLoader').style.display = 'none';
     document.getElementById('appWrapper').style.display = 'block';
     document.getElementById('userName').textContent = profile.full_name || 'Staff';
 
+    // Configurar UI según rol
     configureRoleUI();
     applyRoleVisibility();
 
+    // Eventos
     document.getElementById('btnLogout').addEventListener('click', () => window.logoutUser());
     document.getElementById('btnCloseDetail').addEventListener('click', () => {
       document.getElementById('orderDetailModal').classList.remove('active');
     });
 
+    // Cargar datos
     await loadOrders();
 
+    // Realtime
     window.supabase
       .channel('orders-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
@@ -39,6 +47,7 @@
       .subscribe();
   });
 
+  // --- CONFIGURAR TÍTULOS, BADGE Y KPIs SEGÚN ROL ---
   function configureRoleUI() {
     const pageTitle = document.getElementById('pageTitle');
     const pageSubtitle = document.getElementById('pageSubtitle');
@@ -79,6 +88,7 @@
     }
   }
 
+  // --- VISIBILIDAD DE COLUMNAS SEGÚN ROL ---
   function applyRoleVisibility() {
     const cols = {
       pendientePago: document.getElementById('colPendientePago'),
@@ -106,6 +116,7 @@
     }
   }
 
+  // --- CARGAR PEDIDOS CON NOMBRE DEL CLIENTE (RPC) ---
   async function loadOrders() {
     let statusFilter;
     if (staffRole === 'admin') statusFilter = ['pendiente_pago', 'confirmado', 'en_preparacion', 'listo'];
@@ -117,6 +128,7 @@
 
     if (error) {
       console.error('Error:', error);
+      // Fallback sin nombre
       const { data: fallback } = await window.supabase
         .from('orders')
         .select('*')
@@ -131,6 +143,7 @@
     updateKPIs();
   }
 
+  // --- ACTUALIZAR KPIs ---
   function updateKPIs() {
     const kpiPend = document.getElementById('kpiPendientes');
     const kpiPrep = document.getElementById('kpiPreparacion');
@@ -140,6 +153,7 @@
     if (kpiList) kpiList.textContent = allOrders.filter(o => o.status === 'listo').length;
   }
 
+  // --- RENDERIZAR KANBAN ---
   function renderKanban() {
     const containers = {
       pendiente_pago: document.getElementById('col-pendiente_pago'),
@@ -156,6 +170,7 @@
       listo: allOrders.filter(o => o.status === 'listo'),
     };
 
+    // Actualizar contadores
     const countP = document.getElementById('countPendientePago');
     const countC = document.getElementById('countConfirmados');
     const countPrep = document.getElementById('countPreparacion');
@@ -165,6 +180,7 @@
     if (countPrep) countPrep.textContent = groups.en_preparacion.length;
     if (countL) countL.textContent = groups.listo.length;
 
+    // Renderizar tarjetas
     Object.keys(groups).forEach(status => {
       const container = containers[status];
       if (!container) return;
@@ -176,6 +192,7 @@
     });
   }
 
+  // --- RENDERIZAR TARJETA DE PEDIDO ---
   function renderOrderCard(o) {
     const clientName = o.client_name || 'Cliente';
     const time = new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -185,7 +202,13 @@
     
     if (o.status === 'pendiente_pago') {
       if (staffRole === 'cashier' || staffRole === 'admin') {
-        actionBtn = `<button class="btn-sm-action btn-pay" onclick="event.stopPropagation(); window.__confirmPayment(${o.id})">💰 Confirmar Pago</button>`;
+        // Botones de Confirmar + Cancelar
+        actionBtn = `
+          <div style="display:flex; gap:0.5rem; width:100%;">
+            <button class="btn-sm-action btn-pay" onclick="event.stopPropagation(); window.__confirmPayment(${o.id})" style="flex:2;">💰 Confirmar</button>
+            <button class="btn-sm-action" onclick="event.stopPropagation(); window.__cancelPendingOrder(${o.id})" style="flex:1; background: rgba(239, 68, 68, 0.2); color: #fca5a5;">✕</button>
+          </div>
+        `;
       } else {
         actionBtn = `<span style="font-size:0.8rem;color:#93c5fd;">⏳ Esperando cobro...</span>`;
       }
@@ -230,6 +253,7 @@
     `;
   }
 
+  // --- CAMBIAR ESTADO (Preparar / Listo / Entregado) ---
   window.__changeStatus = async (orderId, newStatus) => {
     const idx = allOrders.findIndex(o => o.id === orderId);
     if (idx !== -1) {
@@ -255,16 +279,15 @@
     }
   };
 
-  // CONFIRMAR PAGO → usa RPC para descontar stock correctamente
+  // --- CONFIRMAR PAGO (descuenta stock vía RPC) ---
   window.__confirmPayment = async (orderId) => {
     try {
-      const { data, error } = await window.supabase
+      const { error } = await window.supabase
         .rpc('confirm_order_payment', { p_order_id: orderId });
 
       if (error) {
         if (error.message.includes('SOLD_OUT')) {
           alert('❌ No se puede confirmar: uno de los productos se agotó mientras el cliente esperaba.');
-          // Cancelar el pedido automáticamente
           await window.supabase.rpc('cancel_order_and_restore_stock', { p_order_id: orderId });
         } else {
           throw error;
@@ -278,6 +301,26 @@
     }
   };
 
+  // --- CANCELAR PEDIDO PENDIENTE DE PAGO ---
+  window.__cancelPendingOrder = async (orderId) => {
+    if (!confirm(`¿Cancelar el pedido #${orderId}? El cliente deberá hacer uno nuevo.`)) return;
+    
+    try {
+      const { error } = await window.supabase
+        .rpc('cancel_order_and_restore_stock', { p_order_id: orderId });
+
+      if (error) {
+        alert('Error al cancelar: ' + error.message);
+      } else {
+        alert(`✅ Pedido #${orderId} cancelado.`);
+        await loadOrders();
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+  };
+
+  // --- VER DETALLE DEL PEDIDO ---
   window.__viewOrderDetail = async (orderId) => {
     const modal = document.getElementById('orderDetailModal');
     if (!modal) return;
