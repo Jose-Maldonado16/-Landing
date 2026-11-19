@@ -156,7 +156,7 @@
       .rpc('get_orders_with_client_name', { p_statuses: statusFilter });
 
     if (error) {
-      console.error('Error:', error);
+      console.error('❌ Error RPC:', error);
       const { data: fallback } = await window.supabase
         .from('orders')
         .select('*')
@@ -168,6 +168,12 @@
     } else {
       allOrders = data || [];
     }
+
+    console.log('📋 Pedidos cargados:', allOrders.map(o => ({ 
+      id: o.id, 
+      status: o.status, 
+      receipt_url: o.receipt_url 
+    })));
 
     renderKanban();
     updateKPIs();
@@ -356,7 +362,6 @@
   window.__confirmPayment = async (orderId) => {
     const order = allOrders.find(o => o.id === orderId);
     
-    // Validar comprobante para métodos no efectivo
     if (order && order.payment_method !== 'efectivo' && !order.receipt_url) {
       alert('⚠️ Este pedido no tiene comprobante de pago adjunto. El cliente debe subirlo antes de confirmar.');
       return;
@@ -398,21 +403,30 @@
     const modal = document.getElementById('orderDetailModal');
     if (!modal) return;
 
+    // 🔍 LOG DE DIAGNÓSTICO
+    const order = allOrders.find(o => o.id === orderId);
+    console.log('🔍 Cajero ve pedido:', {
+      id: order?.id,
+      status: order?.status,
+      payment_method: order?.payment_method,
+      receipt_url: order?.receipt_url
+    });
+
     document.getElementById('detailOrderTitle').textContent = `Pedido #${orderId}`;
     document.getElementById('detailOrderInfo').innerHTML = '<p>Cargando...</p>';
     document.getElementById('detailOrderItems').innerHTML = '';
     modal.classList.add('active');
 
-    const order = allOrders.find(o => o.id === orderId);
     if (!order) return;
 
     const clientName = order.client_name || 'Cliente';
     const deliveryText = order.delivery_type === 'domicilio' ? '🛵 Domicilio' : '🏪 Recojo';
 
-    // --- COMPROBANTE CON BOTONES DE ACCIÓN ---
+    // --- COMPROBANTE ---
     let receiptHtml = '';
     if (order.receipt_url) {
-      // Si el pedido está pendiente de pago Y hay comprobante, mostrar botones de aprobar/rechazar
+      console.log('📎 Renderizando comprobante:', order.receipt_url);
+
       let actionButtons = '';
       if (order.status === 'pendiente_pago' && (staffRole === 'cashier' || staffRole === 'admin')) {
         actionButtons = `
@@ -434,7 +448,8 @@
           <p style="font-size:0.9rem; color:var(--text-main); margin-bottom:0.75rem; font-weight:700;">📎 Comprobante de pago:</p>
           <a href="${order.receipt_url}" target="_blank" style="display:block;">
             <img src="${order.receipt_url}" alt="Comprobante de pago" 
-                 style="width:100%; max-height:400px; object-fit:contain; border-radius:0.5rem; border:1px solid var(--border-dark); background:#fff; cursor:zoom-in;" />
+                 style="width:100%; max-height:400px; object-fit:contain; border-radius:0.5rem; border:1px solid var(--border-dark); background:#fff; cursor:zoom-in;" 
+                 onerror="this.style.display='none'; this.parentElement.innerHTML='<p style=\\'color:#fca5a5;font-size:0.85rem;\\'>⚠️ No se pudo cargar la imagen. <a href=\\'${order.receipt_url}\\' target=\\'_blank\\' style=\\'color:#93c5fd;\\'>Abrir en nueva pestaña</a></p>';" />
           </a>
           <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.5rem; text-align:center;">
             👆 Clic en la imagen para verla en tamaño completo
@@ -443,7 +458,7 @@
         </div>
       `;
     } else if (order.status === 'pendiente_pago') {
-      // Si no tiene comprobante y es pendiente de pago
+      console.log('⚠️ Pedido pendiente SIN receipt_url');
       receiptHtml = `
         <div style="margin-top:1.5rem; padding:1rem; background:rgba(239,68,68,0.1); border-radius:0.5rem; border:1px solid rgba(239,68,68,0.3);">
           <p style="font-size:0.9rem; color:#fca5a5; font-weight:700;">⚠️ Sin comprobante adjunto</p>
@@ -471,7 +486,7 @@
       ${receiptHtml}
     `;
 
-    // --- ITEMS DEL PEDIDO ---
+    // --- ITEMS ---
     const { data: items, error } = await window.supabase
       .from('order_items')
       .select(`*, products:product_id (name)`)
@@ -504,7 +519,6 @@
     `;
   };
 
-  // --- RECHAZAR COMPROBANTE ---
   window.__rejectReceipt = async (orderId) => {
     if (!confirm('¿Rechazar este comprobante? El pedido volverá a "Pendiente de Pago" y el cliente deberá subir uno nuevo.')) return;
 
