@@ -1,11 +1,22 @@
 /* ============================================
-   CHECKOUT.JS — Con subida de comprobante
-   a Supabase Storage (JPG, PNG, etc.)
+   CHECKOUT.JS — Con validación de horarios
+   de atención + comprobante de pago
    ============================================ */
 (function() {
   let currentUser = null;
   let cart = [];
   let paypalRendered = false;
+
+  // --- HORARIOS DE ATENCIÓN ---
+  const SCHEDULE = {
+    0: [], // Domingo: cerrado
+    1: [{ start: '08:00', end: '13:00' }, { start: '14:30', end: '20:00' }], // Lunes
+    2: [{ start: '08:00', end: '13:00' }, { start: '14:30', end: '20:00' }], // Martes
+    3: [{ start: '08:00', end: '13:00' }, { start: '14:30', end: '20:00' }], // Miércoles
+    4: [{ start: '08:00', end: '13:00' }, { start: '14:30', end: '20:00' }], // Jueves
+    5: [{ start: '08:00', end: '13:00' }, { start: '14:30', end: '20:00' }], // Viernes
+    6: [{ start: '08:00', end: '14:00' }], // Sábado
+  };
 
   document.addEventListener('DOMContentLoaded', async () => {
     const profile = await window.guardPage(['client']);
@@ -24,6 +35,110 @@
     setDateLimits();
     initReceiptPreview();
   });
+
+  // --- VERIFICAR SI UNA FECHA ESTÁ DENTRO DEL HORARIO ---
+  function isWithinSchedule(date) {
+    const day = date.getDay();
+    const hours = SCHEDULE[day];
+    if (!hours || hours.length === 0) return false;
+
+    const timeStr = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+
+    return hours.some(range => {
+      return timeStr >= range.start && timeStr <= range.end;
+    });
+  }
+
+  // --- OBTENER MENSAJE DE ERROR DE HORARIO ---
+  function getScheduleErrorMessage(date) {
+    const day = date.getDay();
+    if (day === 0) return 'Los domingos estamos cerrados. Elige otro día.';
+    if (day === 6) return 'Los sábados atendemos solo de 08:00 a 14:00.';
+    return 'El horario es de Lunes a Viernes de 08:00 a 13:00 y de 14:30 a 20:00.';
+  }
+
+  // --- OBTENER PRÓXIMO HORARIO VÁLIDO ---
+  function getNextValidSchedule() {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + 30);
+    now.setSeconds(0, 0);
+
+    for (let i = 0; i < 7; i++) {
+      const candidate = new Date(now);
+      candidate.setDate(candidate.getDate() + i);
+
+      if (i > 0) candidate.setHours(8, 0, 0, 0);
+
+      const day = candidate.getDay();
+      const ranges = SCHEDULE[day];
+      if (!ranges || ranges.length === 0) continue;
+
+      for (const range of ranges) {
+        const [startH, startM] = range.start.split(':').map(Number);
+        const [endH, endM] = range.end.split(':').map(Number);
+
+        const startDate = new Date(candidate);
+        startDate.setHours(startH, startM, 0, 0);
+
+        const endDate = new Date(candidate);
+        endDate.setHours(endH, endM, 0, 0);
+
+        if (candidate < startDate) {
+          return { date: startDate, valid: true };
+        }
+        if (candidate >= startDate && candidate <= endDate) {
+          return { date: candidate, valid: true };
+        }
+      }
+    }
+
+    return { date: null, valid: false };
+  }
+
+  // --- FECHAS CON VALIDACIÓN DE HORARIOS ---
+  function setDateLimits() {
+    const dateInput = document.getElementById('scheduleDate');
+    const timeInput = document.getElementById('scheduleTime');
+    if (!dateInput || !timeInput) return;
+
+    const nextValid = getNextValidSchedule();
+    if (!nextValid.valid) {
+      alert('No hay horarios disponibles próximamente.');
+      return;
+    }
+
+    const fmtDate = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const fmtTime = (d) => `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+
+    const now = new Date();
+    const maxDate = new Date();
+    maxDate.setDate(now.getDate() + 3);
+
+    dateInput.min = fmtDate(now);
+    dateInput.max = fmtDate(maxDate);
+    dateInput.value = fmtDate(nextValid.date);
+    timeInput.value = fmtTime(nextValid.date);
+
+    dateInput.addEventListener('change', validateDateTime);
+    timeInput.addEventListener('change', validateDateTime);
+  }
+
+  function validateDateTime() {
+    const dateInput = document.getElementById('scheduleDate');
+    const timeInput = document.getElementById('scheduleTime');
+    const errorEl = document.getElementById('checkoutError');
+    
+    if (!dateInput.value || !timeInput.value) return;
+
+    const selected = new Date(`${dateInput.value}T${timeInput.value}`);
+    
+    if (!isWithinSchedule(selected)) {
+      errorEl.textContent = getScheduleErrorMessage(selected);
+      errorEl.classList.remove('hidden');
+    } else {
+      errorEl.classList.add('hidden');
+    }
+  }
 
   // --- CALCULAR TOTAL ---
   function calcularTotal() {
@@ -66,30 +181,6 @@
     document.getElementById('summaryTotal').textContent = `Bs. ${total.toFixed(2)}`;
   }
 
-  // --- FECHAS ---
-  function setDateLimits() {
-    const dateInput = document.getElementById('scheduleDate');
-    const timeInput = document.getElementById('scheduleTime');
-    if (!dateInput || !timeInput) return;
-
-    const now = new Date();
-    const fmtDate = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    const fmtTime = (d) => {
-      let h = d.getHours(), m = d.getMinutes();
-      if (m < 30) m = 30; else { m = 0; h += 1; }
-      if (h >= 24) h = 0;
-      return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-    };
-
-    const maxDate = new Date();
-    maxDate.setDate(now.getDate() + 3);
-
-    dateInput.min = fmtDate(now);
-    dateInput.max = fmtDate(maxDate);
-    dateInput.value = fmtDate(now);
-    timeInput.value = fmtTime(now);
-  }
-
   // --- FORMULARIO ---
   function initForm() {
     const deliveryRadios = document.querySelectorAll('input[name="deliveryType"]');
@@ -125,7 +216,6 @@
         paypalRendered = false;
         btnSubmit.style.display = 'block';
 
-        // Mostrar comprobante para QR, Tarjeta y PayPal
         if (['qr', 'tarjeta', 'paypal'].includes(val)) {
           receiptContainer.style.display = 'block';
         }
@@ -159,14 +249,12 @@
     receiptInput?.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (file) {
-        // Validar tipo
         if (!file.type.startsWith('image/')) {
           alert('El archivo debe ser una imagen (JPG, PNG, etc.)');
           receiptInput.value = '';
           receiptPreview.style.display = 'none';
           return;
         }
-        // Validar tamaño (5MB)
         if (file.size > 5 * 1024 * 1024) {
           alert('La imagen no debe pesar más de 5MB');
           receiptInput.value = '';
@@ -232,50 +320,36 @@
     }).render('#paypal-button-container');
   }
 
-  // --- SUBIR COMPROBANTE A SUPABASE STORAGE ---
+  // --- SUBIR COMPROBANTE ---
   async function uploadReceipt(file) {
     console.log('📤 Iniciando subida de comprobante...');
     console.log('Archivo:', file.name, '| Tipo:', file.type, '| Tamaño:', file.size, 'bytes');
 
-    // Validar tipo de archivo
     if (!file.type.startsWith('image/')) {
       throw new Error('El archivo debe ser una imagen (JPG, PNG, etc.)');
     }
-
-    // Validar tamaño (5MB)
     if (file.size > 5 * 1024 * 1024) {
       throw new Error('La imagen no debe pesar más de 5MB');
     }
 
-    // Generar nombre único
     const fileExt = file.name.split('.').pop().toLowerCase();
     const fileName = `receipt-${currentUser.id}-${Date.now()}.${fileExt}`;
-    console.log('Nombre en Storage:', fileName);
 
     try {
-      // 1. Subir archivo al bucket 'receipts'
       const { data: uploadData, error: uploadError } = await window.supabase.storage
         .from('receipts')
-        .upload(fileName, file, { 
-          cacheControl: '3600', 
-          upsert: false,
-          contentType: file.type
-        });
+        .upload(fileName, file, { cacheControl: '3600', upsert: false, contentType: file.type });
 
       if (uploadError) {
         console.error('❌ Error de Storage:', uploadError);
         throw new Error('Error al subir imagen: ' + uploadError.message);
       }
 
-      console.log('✅ Upload exitoso:', uploadData);
-
-      // 2. Obtener URL pública
       const { data: urlData } = window.supabase.storage
         .from('receipts')
         .getPublicUrl(fileName);
 
       console.log('🔗 URL pública:', urlData.publicUrl);
-
       return urlData.publicUrl;
 
     } catch (err) {
@@ -313,23 +387,27 @@
     if (deliveryType === 'domicilio' && !deliveryAddress) return showError('Ingresa tu dirección.');
     if (!scheduleDate || !scheduleTime) return showError('Selecciona fecha y hora.');
 
-    // 1. Subir comprobante PRIMERO (si aplica)
+    // Validar horario de atención
+    const selectedDateTime = new Date(`${scheduleDate}T${scheduleTime}`);
+    if (!isWithinSchedule(selectedDateTime)) {
+      return showError(getScheduleErrorMessage(selectedDateTime));
+    }
+
+    // Subir comprobante
     let receiptUrl = null;
     if (['qr', 'tarjeta', 'paypal'].includes(paymentMethod)) {
       if (!receiptInput || !receiptInput.files || receiptInput.files.length === 0) {
         return showError('Debes subir el comprobante de pago para continuar.');
       }
       try {
-        console.log('📎 Archivo seleccionado:', receiptInput.files[0]);
         receiptUrl = await uploadReceipt(receiptInput.files[0]);
         console.log('✅ Comprobante subido, URL:', receiptUrl);
       } catch (err) {
-        console.error('❌ Error subiendo comprobante:', err);
         return showError(err.message);
       }
     }
 
-    const scheduledDateTime = new Date(`${scheduleDate}T${scheduleTime}`).toISOString();
+    const scheduledDateTime = selectedDateTime.toISOString();
     const total = calcularTotal();
 
     try {
@@ -351,7 +429,6 @@
         });
       });
 
-      // 2. Crear pedido CON receipt_url incluido en la RPC
       const { data: orderId, error: rpcError } = await window.supabase.rpc('create_order_with_stock_check', {
         p_user_id: currentUser.id,
         p_delivery_type: deliveryType,
@@ -366,6 +443,9 @@
       if (rpcError) {
         if (rpcError.message.includes('SOLD_OUT')) {
           throw new Error('Uno de los productos se agotó. Actualiza tu carrito.');
+        }
+        if (rpcError.message.includes('SCHEDULE_CLOSED')) {
+          throw new Error(rpcError.message.replace('SCHEDULE_CLOSED: ', ''));
         }
         throw new Error(rpcError.message);
       }
