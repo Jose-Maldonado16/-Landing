@@ -317,6 +317,7 @@
       }
 
       // Guardar comprobante en el pedido
+      // Guardar comprobante en el pedido
       if (receiptUrl) {
         await window.supabase.from('orders').update({ receipt_url: receiptUrl }).eq('id', orderId);
       }

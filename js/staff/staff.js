@@ -409,16 +409,53 @@
     const clientName = order.client_name || 'Cliente';
     const deliveryText = order.delivery_type === 'domicilio' ? '🛵 Domicilio' : '🏪 Recojo';
 
-    // Comprobante
+    // --- COMPROBANTE CON BOTONES DE ACCIÓN ---
     let receiptHtml = '';
     if (order.receipt_url) {
+      // Si el pedido está pendiente de pago Y hay comprobante, mostrar botones de aprobar/rechazar
+      let actionButtons = '';
+      if (order.status === 'pendiente_pago' && (staffRole === 'cashier' || staffRole === 'admin')) {
+        actionButtons = `
+          <div style="display:flex; gap:0.75rem; margin-top:1rem;">
+            <button onclick="window.__confirmPayment(${order.id}); document.getElementById('orderDetailModal').classList.remove('active');" 
+                    style="flex:1; padding:0.75rem; background:#10b981; color:#fff; border:none; border-radius:0.5rem; font-weight:700; cursor:pointer; font-size:0.95rem;">
+              ✅ Confirmar Pago
+            </button>
+            <button onclick="window.__rejectReceipt(${order.id})" 
+                    style="flex:1; padding:0.75rem; background:#ef4444; color:#fff; border:none; border-radius:0.5rem; font-weight:700; cursor:pointer; font-size:0.95rem;">
+              ❌ Rechazar Comprobante
+            </button>
+          </div>
+        `;
+      }
+
       receiptHtml = `
-        <div style="margin-top:1rem; padding:1rem; background:#0b1120; border-radius:0.5rem; border:1px solid var(--border-dark);">
-          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.5rem; font-weight:700;">📎 Comprobante de pago:</p>
+        <div style="margin-top:1.5rem; padding:1rem; background:#0b1120; border-radius:0.5rem; border:1px solid var(--border-dark);">
+          <p style="font-size:0.9rem; color:var(--text-main); margin-bottom:0.75rem; font-weight:700;">📎 Comprobante de pago:</p>
           <a href="${order.receipt_url}" target="_blank" style="display:block;">
-            <img src="${order.receipt_url}" alt="Comprobante" style="max-width:100%; max-height:300px; border-radius:0.5rem; border:1px solid var(--border-dark); cursor:pointer;" />
+            <img src="${order.receipt_url}" alt="Comprobante de pago" 
+                 style="width:100%; max-height:400px; object-fit:contain; border-radius:0.5rem; border:1px solid var(--border-dark); background:#fff; cursor:zoom-in;" />
           </a>
-          <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.5rem;">Clic en la imagen para ver completa.</p>
+          <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.5rem; text-align:center;">
+            👆 Clic en la imagen para verla en tamaño completo
+          </p>
+          ${actionButtons}
+        </div>
+      `;
+    } else if (order.status === 'pendiente_pago') {
+      // Si no tiene comprobante y es pendiente de pago
+      receiptHtml = `
+        <div style="margin-top:1.5rem; padding:1rem; background:rgba(239,68,68,0.1); border-radius:0.5rem; border:1px solid rgba(239,68,68,0.3);">
+          <p style="font-size:0.9rem; color:#fca5a5; font-weight:700;">⚠️ Sin comprobante adjunto</p>
+          <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.25rem;">
+            ${order.payment_method === 'efectivo' ? 'Este pedido es en efectivo. Confirma el pago cuando el cliente pague en caja.' : 'El cliente debe subir un comprobante de pago antes de confirmar.'}
+          </p>
+          ${order.payment_method === 'efectivo' && (staffRole === 'cashier' || staffRole === 'admin') ? `
+            <button onclick="window.__confirmPayment(${order.id}); document.getElementById('orderDetailModal').classList.remove('active');" 
+                    style="width:100%; margin-top:0.75rem; padding:0.75rem; background:#10b981; color:#fff; border:none; border-radius:0.5rem; font-weight:700; cursor:pointer;">
+              💵 Confirmar Pago en Efectivo
+            </button>
+          ` : ''}
         </div>
       `;
     }
@@ -434,6 +471,7 @@
       ${receiptHtml}
     `;
 
+    // --- ITEMS DEL PEDIDO ---
     const { data: items, error } = await window.supabase
       .from('order_items')
       .select(`*, products:product_id (name)`)
@@ -464,6 +502,31 @@
         <span style="color:var(--brand-500);">Bs. ${totalCalculado.toFixed(2)}</span>
       </div>
     `;
+  };
+
+  // --- RECHAZAR COMPROBANTE ---
+  window.__rejectReceipt = async (orderId) => {
+    if (!confirm('¿Rechazar este comprobante? El pedido volverá a "Pendiente de Pago" y el cliente deberá subir uno nuevo.')) return;
+
+    try {
+      const { error } = await window.supabase
+        .from('orders')
+        .update({ 
+          status: 'pendiente_pago',
+          receipt_url: null 
+        })
+        .eq('id', orderId);
+
+      if (error) {
+        alert('Error al rechazar: ' + error.message);
+      } else {
+        alert('❌ Comprobante rechazado. El cliente deberá subir uno nuevo.');
+        document.getElementById('orderDetailModal').classList.remove('active');
+        await loadOrders();
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
   };
 
   // --- CHAT ---
