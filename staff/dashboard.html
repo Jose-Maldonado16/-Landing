@@ -234,6 +234,20 @@
       <button type="button" id="btnCloseDetail" class="btn btn--primary" style="width: 100%;">Cerrar</button>
     </div>
   </div>
+    <!-- MODAL DE CHAT -->
+  <div id="chatModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 480px;">
+      <h2 id="chatTitle">Chat del Pedido</h2>
+      <div id="chatMessages" style="max-height: 300px; overflow-y: auto; margin-bottom: 1rem; padding: 1rem; background: #0b1120; border-radius: 0.5rem; border: 1px solid var(--border-dark);">
+        <p style="color: var(--text-muted); text-align: center; font-size: 0.85rem;">Cargando mensajes...</p>
+      </div>
+      <form id="chatForm" style="display: flex; gap: 0.5rem;">
+        <input type="text" id="chatInput" placeholder="Escribe un mensaje..." style="flex: 1; padding: 0.65rem; border: 1px solid var(--border-dark); border-radius: 0.5rem; background: #0b1120; color: var(--text-main);" required />
+        <button type="submit" class="btn btn--primary" style="padding: 0.65rem 1rem;">Enviar</button>
+      </form>
+      <button type="button" id="btnCloseChat" class="btn btn--outline" style="width: 100%; margin-top: 1rem;">Cerrar</button>
+    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/js/supabaseClient.js"></script>

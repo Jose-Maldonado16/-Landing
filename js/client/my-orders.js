@@ -1,10 +1,14 @@
 /* ============================================
-   MY-ORDERS.JS — Historial de pedidos del cliente
-   con timeline de estado en tiempo real
+   MY-ORDERS.JS — Historial de pedidos con timeline
+   + chat con el repartidor
    ============================================ */
 (function() {
   let currentUser = null;
   let orders = [];
+
+  // Chat
+  let currentChatOrderId = null;
+  let chatSubscription = null;
 
   document.addEventListener('DOMContentLoaded', async () => {
     const profile = await window.guardPage(['client']);
@@ -16,6 +20,7 @@
 
     document.getElementById('btnLogout').addEventListener('click', () => window.logoutUser());
 
+    initChat();
     await loadOrders();
     initRealtime();
   });
@@ -51,16 +56,27 @@
       return;
     }
 
-    // Cargar los items de cada pedido
-    const ordersWithItems = await Promise.all(orders.map(async (order) => {
+    // Cargar items de cada pedido + info del repartidor
+    const ordersWithData = await Promise.all(orders.map(async (order) => {
       const { data: items } = await window.supabase
         .from('order_items')
         .select(`*, products:product_id (name)`)
         .eq('order_id', order.id);
-      return { ...order, items: items || [] };
+      
+      let deliveryPersonName = null;
+      if (order.delivery_person_id) {
+        const { data: dp } = await window.supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', order.delivery_person_id)
+          .single();
+        deliveryPersonName = dp?.full_name;
+      }
+      
+      return { ...order, items: items || [], delivery_person_name: deliveryPersonName };
     }));
 
-    container.innerHTML = ordersWithItems.map(order => renderOrderCard(order)).join('');
+    container.innerHTML = ordersWithData.map(order => renderOrderCard(order)).join('');
   }
 
   function renderOrderCard(order) {
@@ -68,25 +84,27 @@
     const isCancelled = status === 'cancelado';
     const isDelivered = status === 'entregado';
     const isReady = status === 'listo';
+    const isOnTheWay = status === 'en_camino';
     const deliveryType = order.delivery_type;
 
-    // Configurar timeline
     const steps = [
       { key: 'pendiente_pago', label: 'Pago', icon: '💳' },
       { key: 'confirmado', label: 'Confirmado', icon: '✅' },
       { key: 'en_preparacion', label: 'Cocina', icon: '👨‍🍳' },
-      { key: 'listo', label: deliveryType === 'domicilio' ? 'En camino' : 'Listo', icon: deliveryType === 'domicilio' ? '🛵' : '📦' },
+      { key: 'listo', label: deliveryType === 'domicilio' ? 'Listo' : 'Listo', icon: '📦' },
+      { key: 'en_camino', label: 'En Camino', icon: '🛵' },
       { key: 'entregado', label: 'Entregado', icon: '🎉' }
     ];
 
-    // Determinar índices
-    const statusOrder = ['pendiente_pago', 'confirmado', 'en_preparacion', 'listo', 'entregado'];
+    const statusOrder = ['pendiente_pago', 'confirmado', 'en_preparacion', 'listo', 'en_camino', 'entregado'];
     const currentIndex = statusOrder.indexOf(status);
 
     const timelineHtml = steps.map((step, index) => {
+      // Para recojo, no mostrar "en_camino"
+      if (deliveryType === 'recojo' && step.key === 'en_camino') return '';
+      
       let cls = 'timeline-step';
       if (isCancelled) {
-        // Si está cancelado, mostrar todo gris excepto el primero
         if (index === 0) cls += ' completed';
       } else if (index < currentIndex) {
         cls += ' completed';
@@ -101,24 +119,26 @@
       `;
     }).join('');
 
-    // Badge de estado
     const statusLabels = {
       pendiente_pago: '⏳ Esperando Pago',
       confirmado: '✅ Confirmado',
       en_preparacion: '👨‍🍳 En Cocina',
-      listo: deliveryType === 'domicilio' ? '🛵 En Camino' : '📦 Listo para Recoger',
+      listo: deliveryType === 'domicilio' ? '📦 Listo para Envío' : '📦 Listo para Recoger',
+      en_camino: '🛵 En Camino',
       entregado: '🎉 Entregado',
       cancelado: '❌ Cancelado'
     };
 
-    // Banner de entrega
+    // Banner según estado
     let deliveryBanner = '';
     if (!isCancelled) {
-      if (isReady) {
+      if (isOnTheWay) {
+        deliveryBanner = `<div class="delivery-banner delivery-banner--domicilio">🛵 Tu pedido está en camino${order.delivery_person_name ? ` con ${order.delivery_person_name}` : ''}.</div>`;
+      } else if (isReady) {
         if (deliveryType === 'recojo') {
           deliveryBanner = `<div class="delivery-banner delivery-banner--recojo">📦 ¡Tu pedido está listo! Pasa a recogerlo a la tienda.</div>`;
         } else {
-          deliveryBanner = `<div class="delivery-banner delivery-banner--domicilio">🛵 ¡Tu pedido está en camino! Llega pronto a tu domicilio.</div>`;
+          deliveryBanner = `<div class="delivery-banner delivery-banner--recojo">📦 ¡Tu pedido está listo! Un repartidor lo recogerá pronto.</div>`;
         }
       } else if (isDelivered) {
         deliveryBanner = `<div class="delivery-banner delivery-banner--recojo">🎉 Pedido entregado. ¡Gracias por tu compra!</div>`;
@@ -133,7 +153,13 @@
       deliveryBanner = `<div class="delivery-banner" style="background:rgba(239,68,68,0.15); color:#fca5a5; border-left:3px solid #ef4444;">❌ Este pedido fue cancelado.</div>`;
     }
 
-    // Lista de items
+    // Botón de chat (solo si es domicilio y el pedido está en proceso)
+    let chatButton = '';
+    if (deliveryType === 'domicilio' && ['listo', 'en_camino'].includes(status) && !isCancelled) {
+      chatButton = `<button class="btn btn--outline" onclick="window.__openChat(${order.id})" style="margin-top:1rem; width:100%;">💬 Chatear con el repartidor</button>`;
+    }
+
+    // Items
     const itemsHtml = order.items.map(item => {
       const isComplemento = item.custom_notes?.startsWith('Complemento para');
       const name = item.products?.name || 'Producto';
@@ -161,6 +187,7 @@
           ${!isCancelled ? `<div class="timeline">${timelineHtml}</div>` : ''}
           
           ${deliveryBanner}
+          ${chatButton}
           
           <div class="order-meta-grid">
             <div class="order-meta-item">
@@ -171,6 +198,12 @@
               <div class="order-meta-item">
                 <div class="order-meta-label">Dirección</div>
                 <div class="order-meta-value">${order.delivery_address}</div>
+              </div>
+            ` : ''}
+            ${order.delivery_person_name ? `
+              <div class="order-meta-item">
+                <div class="order-meta-label">Repartidor</div>
+                <div class="order-meta-value">${order.delivery_person_name}</div>
               </div>
             ` : ''}
             <div class="order-meta-item">
@@ -204,8 +237,6 @@
         table: 'orders',
         filter: `user_id=eq.${currentUser.id}`
       }, (payload) => {
-        console.log('Pedido actualizado:', payload.new);
-        // Actualizar el pedido en la lista local
         const idx = orders.findIndex(o => o.id === payload.new.id);
         if (idx !== -1) {
           orders[idx] = { ...orders[idx], ...payload.new };
@@ -213,5 +244,87 @@
         }
       })
       .subscribe();
+  }
+
+  // --- CHAT ---
+  function initChat() {
+    const btnCloseChat = document.getElementById('btnCloseChat');
+    btnCloseChat?.addEventListener('click', () => {
+      document.getElementById('chatModal').classList.remove('active');
+      if (chatSubscription) { chatSubscription.unsubscribe(); chatSubscription = null; }
+    });
+
+    document.getElementById('chatForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('chatInput');
+      const msg = input.value.trim();
+      if (!msg || !currentChatOrderId || !currentUser) return;
+
+      input.value = '';
+      const { error } = await window.supabase.from('order_messages').insert({
+        order_id: currentChatOrderId,
+        sender_id: currentUser.id,
+        sender_role: 'client',
+        message: msg
+      });
+
+      if (error) alert('Error al enviar: ' + error.message);
+    });
+  }
+
+  window.__openChat = async (orderId) => {
+    currentChatOrderId = orderId;
+    const modal = document.getElementById('chatModal');
+    document.getElementById('chatTitle').textContent = `Chat del Pedido #${orderId}`;
+    modal.classList.add('active');
+    await loadChatMessages(orderId);
+
+    if (chatSubscription) chatSubscription.unsubscribe();
+    chatSubscription = window.supabase
+      .channel(`chat-client-${orderId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'order_messages', filter: `order_id=eq.${orderId}` }, (payload) => {
+        appendChatMessage(payload.new);
+      })
+      .subscribe();
+  };
+
+  async function loadChatMessages(orderId) {
+    const container = document.getElementById('chatMessages');
+    const { data } = await window.supabase
+      .from('order_messages')
+      .select('*, profiles:sender_id (full_name, role)')
+      .eq('order_id', orderId)
+      .order('created_at', { ascending: true });
+
+    if (!data || data.length === 0) {
+      container.innerHTML = `<p style="color: var(--text-muted); text-align: center; font-size: 0.85rem;">No hay mensajes aún.</p>`;
+      return;
+    }
+
+    container.innerHTML = data.map(m => renderChatMessage(m)).join('');
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function renderChatMessage(msg) {
+    const isMe = msg.sender_id === currentUser.id;
+    const senderName = msg.profiles?.full_name || 'Usuario';
+    const bubbleStyle = isMe 
+      ? 'background: var(--brand-500); color: #fff; margin-left: auto;' 
+      : 'background: #1e293b; color: var(--text-main); margin-right: auto;';
+    
+    return `
+      <div style="margin-bottom: 0.75rem; max-width: 80%; ${bubbleStyle} padding: 0.6rem 0.9rem; border-radius: 0.75rem; word-wrap: break-word;">
+        <div style="font-size: 0.7rem; opacity: 0.8; margin-bottom: 0.2rem;">${senderName}</div>
+        <div style="font-size: 0.9rem;">${msg.message}</div>
+        <div style="font-size: 0.65rem; opacity: 0.7; margin-top: 0.2rem;">${new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</div>
+      </div>
+    `;
+  }
+
+  function appendChatMessage(msg) {
+    const container = document.getElementById('chatMessages');
+    if (container.querySelector('p')) container.innerHTML = '';
+    container.innerHTML += renderChatMessage(msg);
+    container.scrollTop = container.scrollHeight;
   }
 })();
