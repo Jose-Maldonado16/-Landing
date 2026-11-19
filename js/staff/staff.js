@@ -1,13 +1,11 @@
 /* ============================================
-   STAFF.JS — Roles: kitchen, cashier, delivery, admin
-   + Chat sin JOIN (evita error 406)
+   STAFF.JS — Roles + chat + comprobante
    ============================================ */
 (function() {
   let allOrders = [];
   let staffRole = 'kitchen';
   let staffProfile = null;
 
-  // Chat
   let currentChatOrderId = null;
   let chatSubscription = null;
 
@@ -48,7 +46,7 @@
       .subscribe();
   });
 
-  // --- CONFIGURAR UI SEGÚN ROL ---
+  // --- CONFIGURAR UI ---
   function configureRoleUI() {
     const pageTitle = document.getElementById('pageTitle');
     const pageSubtitle = document.getElementById('pageSubtitle');
@@ -99,7 +97,7 @@
     }
   }
 
-  // --- VISIBILIDAD DE COLUMNAS SEGÚN ROL ---
+  // --- VISIBILIDAD ---
   function applyRoleVisibility() {
     const cols = {
       pendientePago: document.getElementById('colPendientePago'),
@@ -121,7 +119,6 @@
         const title = cols.listo.querySelector('.kanban-title');
         if (title) title.textContent = '🟢 Listos (Recojo)';
       }
-      // ✅ TÍTULO CORREGIDO: "En Preparación" en lugar de "Cobrar en Efectivo"
       const titleC = document.getElementById('titleConfirmado');
       if (titleC) titleC.textContent = '👨‍🍳 En Preparación';
     }
@@ -166,10 +163,7 @@
         .in('status', statusFilter)
         .order('created_at', { ascending: true });
       allOrders = (fallback || []).map(o => ({ 
-        ...o, 
-        client_name: 'Cliente', 
-        client_phone: null, 
-        delivery_person_name: null 
+        ...o, client_name: 'Cliente', client_phone: null, delivery_person_name: null 
       }));
     } else {
       allOrders = data || [];
@@ -179,7 +173,6 @@
     updateKPIs();
   }
 
-  // --- KPIs ---
   function updateKPIs() {
     const kpiPend = document.getElementById('kpiPendientes');
     const kpiPrep = document.getElementById('kpiPreparacion');
@@ -195,7 +188,6 @@
     }
   }
 
-  // --- RENDER KANBAN ---
   function renderKanban() {
     const containers = {
       pendiente_pago: document.getElementById('col-pendiente_pago'),
@@ -234,7 +226,6 @@
     });
   }
 
-  // --- TARJETA DE PEDIDO ---
   function renderOrderCard(o) {
     const clientName = o.client_name || 'Cliente';
     const time = new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -248,6 +239,12 @@
           📞 ${o.client_phone || 'Sin teléfono'}
         </div>
       `;
+    }
+
+    // Indicador de comprobante
+    let receiptBadge = '';
+    if (o.receipt_url) {
+      receiptBadge = `<div style="font-size:0.75rem; color:#6ee7b7; margin-bottom:0.5rem;">📎 Comprobante adjunto</div>`;
     }
 
     let actionBtn = '';
@@ -316,6 +313,7 @@
         <div class="order-client">${clientName}</div>
         <div class="order-details">${deliveryText} · ${o.payment_method.toUpperCase()}</div>
         ${extraInfo}
+        ${receiptBadge}
         <div class="order-total">Bs. ${o.total}</div>
         <div class="order-hint">👁️ Clic para ver detalle</div>
         <div class="order-actions">${actionBtn}</div>
@@ -323,7 +321,6 @@
     `;
   }
 
-  // --- CAMBIAR ESTADO ---
   window.__changeStatus = async (orderId, newStatus) => {
     const idx = allOrders.findIndex(o => o.id === orderId);
     if (idx !== -1) {
@@ -356,8 +353,15 @@
     }
   };
 
-  // --- CONFIRMAR PAGO ---
   window.__confirmPayment = async (orderId) => {
+    const order = allOrders.find(o => o.id === orderId);
+    
+    // Validar comprobante para métodos no efectivo
+    if (order && order.payment_method !== 'efectivo' && !order.receipt_url) {
+      alert('⚠️ Este pedido no tiene comprobante de pago adjunto. El cliente debe subirlo antes de confirmar.');
+      return;
+    }
+
     try {
       const { error } = await window.supabase
         .rpc('confirm_order_payment', { p_order_id: orderId });
@@ -378,7 +382,6 @@
     }
   };
 
-  // --- CANCELAR PEDIDO ---
   window.__cancelPendingOrder = async (orderId) => {
     if (!confirm(`¿Cancelar el pedido #${orderId}?`)) return;
     try {
@@ -391,7 +394,6 @@
     }
   };
 
-  // --- VER DETALLE ---
   window.__viewOrderDetail = async (orderId) => {
     const modal = document.getElementById('orderDetailModal');
     if (!modal) return;
@@ -407,6 +409,20 @@
     const clientName = order.client_name || 'Cliente';
     const deliveryText = order.delivery_type === 'domicilio' ? '🛵 Domicilio' : '🏪 Recojo';
 
+    // Comprobante
+    let receiptHtml = '';
+    if (order.receipt_url) {
+      receiptHtml = `
+        <div style="margin-top:1rem; padding:1rem; background:#0b1120; border-radius:0.5rem; border:1px solid var(--border-dark);">
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.5rem; font-weight:700;">📎 Comprobante de pago:</p>
+          <a href="${order.receipt_url}" target="_blank" style="display:block;">
+            <img src="${order.receipt_url}" alt="Comprobante" style="max-width:100%; max-height:300px; border-radius:0.5rem; border:1px solid var(--border-dark); cursor:pointer;" />
+          </a>
+          <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.5rem;">Clic en la imagen para ver completa.</p>
+        </div>
+      `;
+    }
+
     document.getElementById('detailOrderInfo').innerHTML = `
       <p style="margin-bottom:0.25rem;"><strong>Cliente:</strong> ${clientName}</p>
       ${order.client_phone ? `<p style="margin-bottom:0.25rem;"><strong>Teléfono:</strong> ${order.client_phone}</p>` : ''}
@@ -415,6 +431,7 @@
       <p style="margin-bottom:0.25rem;"><strong>Hora programada:</strong> ${new Date(order.scheduled_time).toLocaleString()}</p>
       ${order.delivery_person_name ? `<p style="margin-bottom:0.25rem;"><strong>Repartidor:</strong> ${order.delivery_person_name}</p>` : ''}
       <p><strong>Estado:</strong> <span class="status-badge status-${order.status}">${order.status}</span></p>
+      ${receiptHtml}
     `;
 
     const { data: items, error } = await window.supabase
@@ -449,7 +466,7 @@
     `;
   };
 
-  // --- CHAT (SIN JOIN — evita error 406) ---
+  // --- CHAT ---
   function initChat() {
     const btnCloseChat = document.getElementById('btnCloseChat');
     btnCloseChat?.addEventListener('click', () => {
@@ -489,17 +506,14 @@
     chatSubscription = window.supabase
       .channel(`chat-${orderId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'order_messages', filter: `order_id=eq.${orderId}` }, (payload) => {
-        // 🔧 Sin JOIN: recargar mensajes completos para evitar 406
         loadChatMessages(orderId);
       })
       .subscribe();
   };
 
-  // 🔧 CORREGIDO: sin JOIN, dos queries separadas
   async function loadChatMessages(orderId) {
     const container = document.getElementById('chatMessages');
     
-    // 1. Cargar mensajes (sin JOIN)
     const { data: messages, error } = await window.supabase
       .from('order_messages')
       .select('*')
@@ -517,7 +531,6 @@
       return;
     }
 
-    // 2. Cargar perfiles de los remitentes en una segunda query
     const senderIds = [...new Set(messages.map(m => m.sender_id))];
     const { data: profiles } = await window.supabase
       .from('profiles')
@@ -527,7 +540,6 @@
     const profilesMap = {};
     (profiles || []).forEach(p => { profilesMap[p.id] = p; });
 
-    // 3. Renderizar
     container.innerHTML = messages.map(m => {
       const sender = profilesMap[m.sender_id] || { full_name: 'Usuario', role: m.sender_role };
       return renderChatMessage({ ...m, sender_name: sender.full_name });

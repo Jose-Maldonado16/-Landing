@@ -105,6 +105,25 @@
 
           <!-- Botón de PayPal (Sandbox) -->
           <div id="paypal-button-container" style="display: none; margin-top: 1rem;"></div>
+
+          <!-- Subir comprobante -->
+          <div id="receipt-container" style="display: none; margin-top: 1rem; padding: 1rem; background: #0b1120; border-radius: 0.75rem; border: 1px solid var(--border-dark);">
+            <label for="receiptInput" style="display: block; font-size: 0.9rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem;">
+              📸 Sube tu comprobante de pago *
+            </label>
+            <input 
+              type="file" 
+              id="receiptInput" 
+              accept="image/*" 
+              style="width: 100%; padding: 0.5rem; background: var(--card-dark); border: 1px solid var(--border-dark); border-radius: 0.5rem; color: var(--text-main); cursor: pointer;"
+            />
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
+              Sube una foto del comprobante de tu pago (QR, tarjeta o PayPal). El cajero lo revisará antes de confirmar.
+            </p>
+            <div id="receiptPreview" style="margin-top: 0.75rem; display: none;">
+              <img id="receiptImg" style="max-width: 100%; max-height: 200px; border-radius: 0.5rem; border: 1px solid var(--border-dark);" />
+            </div>
+          </div>
         </section>
 
         <!-- Notas -->
