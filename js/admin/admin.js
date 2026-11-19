@@ -1,9 +1,10 @@
 /* ============================================
-   ADMIN.JS — Panel con cancelación y devolución de stock
+   ADMIN.JS — Dashboard, Productos, Pedidos, Usuarios
    ============================================ */
 (function() {
   let allProducts = [];
   let allOrders = [];
+  let allUsers = [];
 
   document.addEventListener('DOMContentLoaded', async () => {
     const profile = await window.guardPage(['admin']);
@@ -19,10 +20,14 @@
     await loadDashboardMetrics();
     await loadProducts();
     await loadOrders();
+    await loadUsers();
     initProductModal();
     initOrderDetailModal();
+    initUserModal();
+    initUserFilters();
   });
 
+  // --- TABS ---
   function initTabs() {
     const tabs = document.querySelectorAll('.admin-tab');
     tabs.forEach(tab => {
@@ -35,6 +40,9 @@
     });
   }
 
+  // ============================================
+  // DASHBOARD METRICS
+  // ============================================
   async function loadDashboardMetrics() {
     const { data: orders } = await window.supabase.from('orders').select('total, created_at, status');
     if (orders) {
@@ -73,6 +81,9 @@
     }
   }
 
+  // ============================================
+  // PRODUCTOS
+  // ============================================
   async function loadProducts() {
     const { data } = await window.supabase.from('products').select('*').order('id');
     allProducts = data || [];
@@ -94,37 +105,6 @@
         </td>
       </tr>
     `).join('');
-  }
-
-  async function loadOrders() {
-    const { data } = await window.supabase
-      .from('orders')
-      .select(`*, profiles:user_id (full_name)`)
-      .order('created_at', { ascending: false });
-      
-    const tbody = document.getElementById('allOrdersTable');
-    if (!data || data.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">No hay pedidos.</td></tr>`;
-      return;
-    }
-    allOrders = data;
-
-    tbody.innerHTML = data.map(o => {
-      const canCancel = o.status !== 'entregado' && o.status !== 'cancelado';
-      return `
-        <tr>
-          <td>#${o.id}</td>
-          <td>${o.profiles?.full_name || 'Cliente'}</td>
-          <td style="text-transform:capitalize;">${o.delivery_type}</td>
-          <td style="text-transform:capitalize;">${o.payment_method}</td>
-          <td>Bs. ${o.total}</td>
-          <td><span class="status-badge status-${o.status}">${o.status}</span></td>
-          <td>${new Date(o.created_at).toLocaleDateString()}</td>
-          <td><button class="action-btn btn-view" onclick="window.__viewOrderDetail(${o.id})">Ver</button></td>
-          <td>${canCancel ? `<button class="action-btn btn-delete" onclick="window.__cancelOrder(${o.id})">Cancelar</button>` : '—'}</td>
-        </tr>
-      `;
-    }).join('');
   }
 
   function initProductModal() {
@@ -171,6 +151,61 @@
     });
   }
 
+  window.__editProduct = (id) => {
+    const p = allProducts.find(prod => prod.id === id);
+    if (!p) return;
+    document.getElementById('prodId').value = p.id;
+    document.getElementById('prodName').value = p.name;
+    document.getElementById('prodDesc').value = p.description || '';
+    document.getElementById('prodPrice').value = p.price;
+    document.getElementById('prodCategory').value = p.category;
+    document.getElementById('prodStock').value = p.stock;
+    document.getElementById('prodImage').value = p.image_url || '';
+    document.getElementById('modalTitle').textContent = 'Editar Producto';
+    document.getElementById('productModal').classList.add('active');
+  };
+
+  window.__deleteProduct = async (id) => {
+    if (!confirm('¿Eliminar este producto?')) return;
+    const { error } = await window.supabase.from('products').delete().eq('id', id);
+    if (error) alert('Error: ' + error.message);
+    else { await loadProducts(); await loadDashboardMetrics(); }
+  };
+
+  // ============================================
+  // PEDIDOS
+  // ============================================
+  async function loadOrders() {
+    const { data } = await window.supabase
+      .from('orders')
+      .select(`*, profiles:user_id (full_name)`)
+      .order('created_at', { ascending: false });
+      
+    const tbody = document.getElementById('allOrdersTable');
+    if (!data || data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">No hay pedidos.</td></tr>`;
+      return;
+    }
+    allOrders = data;
+
+    tbody.innerHTML = data.map(o => {
+      const canCancel = o.status !== 'entregado' && o.status !== 'cancelado';
+      return `
+        <tr>
+          <td>#${o.id}</td>
+          <td>${o.profiles?.full_name || 'Cliente'}</td>
+          <td style="text-transform:capitalize;">${o.delivery_type}</td>
+          <td style="text-transform:capitalize;">${o.payment_method}</td>
+          <td>Bs. ${o.total}</td>
+          <td><span class="status-badge status-${o.status}">${o.status}</span></td>
+          <td>${new Date(o.created_at).toLocaleDateString()}</td>
+          <td><button class="action-btn btn-view" onclick="window.__viewOrderDetail(${o.id})">Ver</button></td>
+          <td>${canCancel ? `<button class="action-btn btn-delete" onclick="window.__cancelOrder(${o.id})">Cancelar</button>` : '—'}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
   function initOrderDetailModal() {
     document.getElementById('btnCloseDetail').addEventListener('click', () => {
       document.getElementById('orderDetailModal').classList.remove('active');
@@ -190,12 +225,25 @@
     const clientName = order.profiles?.full_name || 'Cliente';
     const deliveryText = order.delivery_type === 'domicilio' ? '🛵 Domicilio' : '🏪 Recojo';
 
+    let receiptHtml = '';
+    if (order.receipt_url) {
+      receiptHtml = `
+        <div style="margin-top:1rem; padding:1rem; background:#0b1120; border-radius:0.5rem; border:1px solid var(--border-dark);">
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.5rem; font-weight:700;">📎 Comprobante de pago:</p>
+          <a href="${order.receipt_url}" target="_blank" style="display:block;">
+            <img src="${order.receipt_url}" alt="Comprobante" style="max-width:100%; max-height:300px; border-radius:0.5rem; border:1px solid var(--border-dark); cursor:pointer;" />
+          </a>
+        </div>
+      `;
+    }
+
     document.getElementById('detailOrderInfo').innerHTML = `
       <p style="margin-bottom:0.25rem;"><strong>Cliente:</strong> ${clientName}</p>
       <p style="margin-bottom:0.25rem;"><strong>Entrega:</strong> ${deliveryText} ${order.delivery_address ? `- ${order.delivery_address}` : ''}</p>
       <p style="margin-bottom:0.25rem;"><strong>Pago:</strong> ${order.payment_method.toUpperCase()}</p>
-      <p style="margin-bottom:0.25rem;"><strong>Fecha programada:</strong> ${new Date(order.scheduled_time).toLocaleString()}</p>
+      <p style="margin-bottom:0.25rem;"><strong>Hora programada:</strong> ${new Date(order.scheduled_time).toLocaleString()}</p>
       <p><strong>Estado:</strong> <span class="status-badge status-${order.status}">${order.status}</span></p>
+      ${receiptHtml}
     `;
 
     const { data: items } = await window.supabase
@@ -212,15 +260,16 @@
     document.getElementById('detailOrderItems').innerHTML = items.map(i => {
       totalCalculado += Number(i.subtotal);
       const name = i.products?.name || 'Producto';
+      const isComplemento = i.custom_notes?.startsWith('Complemento para');
       return `
-        <div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid var(--border-dark);">
+        <div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid var(--border-dark); ${isComplemento ? 'margin-left:1.5rem; border-left:2px solid var(--accent-500); padding-left:0.75rem;' : ''}">
           <div>
-            <strong>${name}</strong>
+            <strong>${isComplemento ? '➕ ' : ''}${name}</strong>
             <div style="font-size:0.85rem; color:var(--text-muted);">${i.quantity} x Bs. ${i.unit_price}</div>
           </div>
           <div style="font-weight:700;">Bs. ${i.subtotal}</div>
         </div>
-        ${i.custom_notes ? `<div style="font-size:0.8rem; color:var(--accent-500); margin-top:0.25rem;">📝 ${i.custom_notes}</div>` : ''}
+        ${i.custom_notes && !isComplemento ? `<div style="font-size:0.8rem; color:var(--accent-500); margin-top:0.25rem;">📝 ${i.custom_notes}</div>` : ''}
       `;
     }).join('') + `
       <div style="display:flex; justify-content:space-between; margin-top:1rem; padding-top:0.5rem; border-top:2px solid var(--border-dark); font-weight:800; font-size:1.1rem;">
@@ -243,24 +292,131 @@
     }
   };
 
-  window.__editProduct = (id) => {
-    const p = allProducts.find(prod => prod.id === id);
-    if (!p) return;
-    document.getElementById('prodId').value = p.id;
-    document.getElementById('prodName').value = p.name;
-    document.getElementById('prodDesc').value = p.description || '';
-    document.getElementById('prodPrice').value = p.price;
-    document.getElementById('prodCategory').value = p.category;
-    document.getElementById('prodStock').value = p.stock;
-    document.getElementById('prodImage').value = p.image_url || '';
-    document.getElementById('modalTitle').textContent = 'Editar Producto';
-    document.getElementById('productModal').classList.add('active');
+  // ============================================
+  // USUARIOS
+  // ============================================
+  async function loadUsers() {
+    const { data, error } = await window.supabase.rpc('get_all_users_with_email');
+    
+    if (error) {
+      console.error('Error cargando usuarios:', error);
+      document.getElementById('usersTable').innerHTML = `<tr><td colspan="7" style="text-align:center;color:red;">Error al cargar usuarios: ${error.message}</td></tr>`;
+      return;
+    }
+
+    allUsers = data || [];
+    renderUsers(allUsers);
+  }
+
+  function renderUsers(users) {
+    const tbody = document.getElementById('usersTable');
+    
+    if (users.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">No hay usuarios.</td></tr>`;
+      return;
+    }
+
+    const roleLabels = {
+      admin: '👑 Admin',
+      staff: '👨‍🍳 Staff',
+      client: '🛍️ Cliente'
+    };
+
+    const staffRoleLabels = {
+      kitchen: '🧑‍🍳 Cocina',
+      cashier: '💰 Cajero',
+      delivery: '🛵 Repartidor'
+    };
+
+    tbody.innerHTML = users.map(u => `
+      <tr>
+        <td style="font-weight:600;">${u.full_name || '—'}</td>
+        <td style="font-size:0.85rem;">${u.email || '—'}</td>
+        <td><span class="status-badge status-${u.role}">${roleLabels[u.role] || u.role}</span></td>
+        <td>${u.staff_role ? (staffRoleLabels[u.staff_role] || u.staff_role) : '—'}</td>
+        <td>${u.phone || '—'}</td>
+        <td style="font-size:0.85rem;">${new Date(u.created_at).toLocaleDateString()}</td>
+        <td>
+          <button class="action-btn btn-edit" onclick="window.__editUser('${u.id}')">Editar</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function initUserModal() {
+    const modal = document.getElementById('userModal');
+    const form = document.getElementById('userForm');
+    
+    document.getElementById('btnCancelUser').addEventListener('click', () => modal.classList.remove('active'));
+
+    document.getElementById('userRole').addEventListener('change', toggleStaffRoleGroup);
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const userId = document.getElementById('userId').value;
+      const role = document.getElementById('userRole').value;
+      const staffRole = role === 'staff' ? document.getElementById('userStaffRole').value : null;
+
+      const updateData = {
+        full_name: document.getElementById('userFullName').value.trim(),
+        phone: document.getElementById('userPhone').value.trim() || null,
+        role: role,
+        staff_role: staffRole || null
+      };
+
+      const { error } = await window.supabase
+        .from('profiles')
+        .update(updateData)
+        .eq('id', userId);
+
+      if (error) {
+        alert('Error al actualizar: ' + error.message);
+      } else {
+        alert('✅ Usuario actualizado correctamente.');
+        modal.classList.remove('active');
+        await loadUsers();
+      }
+    });
+  }
+
+  function toggleStaffRoleGroup() {
+    const role = document.getElementById('userRole').value;
+    const group = document.getElementById('staffRoleGroup');
+    if (role === 'staff') {
+      group.style.display = 'block';
+    } else {
+      group.style.display = 'none';
+      document.getElementById('userStaffRole').value = '';
+    }
+  }
+
+  window.__editUser = (userId) => {
+    const user = allUsers.find(u => u.id === userId);
+    if (!user) return;
+
+    document.getElementById('userModalTitle').textContent = `Editar: ${user.full_name || user.email}`;
+    document.getElementById('userId').value = user.id;
+    document.getElementById('userFullName').value = user.full_name || '';
+    document.getElementById('userEmail').value = user.email || '';
+    document.getElementById('userPhone').value = user.phone || '';
+    document.getElementById('userRole').value = user.role || 'client';
+    document.getElementById('userStaffRole').value = user.staff_role || '';
+    
+    toggleStaffRoleGroup();
+    
+    document.getElementById('userModal').classList.add('active');
   };
 
-  window.__deleteProduct = async (id) => {
-    if (!confirm('¿Eliminar este producto?')) return;
-    const { error } = await window.supabase.from('products').delete().eq('id', id);
-    if (error) alert('Error: ' + error.message);
-    else { await loadProducts(); await loadDashboardMetrics(); }
-  };
+  function initUserFilters() {
+    const filters = document.querySelectorAll('[data-user-filter]');
+    filters.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filters.forEach(b => b.classList.remove('filter-btn--active'));
+        btn.classList.add('filter-btn--active');
+        const f = btn.dataset.userFilter;
+        const filtered = f === 'all' ? allUsers : allUsers.filter(u => u.role === f);
+        renderUsers(filtered);
+      });
+    });
+  }
 })();
