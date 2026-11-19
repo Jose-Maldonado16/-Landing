@@ -1,6 +1,6 @@
 /* ============================================
-   CHECKOUT.JS — Con comprobante de pago
-   (QR, tarjeta, PayPal → suben imagen)
+   CHECKOUT.JS — Con subida de comprobante
+   a Supabase Storage (JPG, PNG, etc.)
    ============================================ */
 (function() {
   let currentUser = null;
@@ -159,6 +159,21 @@
     receiptInput?.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (file) {
+        // Validar tipo
+        if (!file.type.startsWith('image/')) {
+          alert('El archivo debe ser una imagen (JPG, PNG, etc.)');
+          receiptInput.value = '';
+          receiptPreview.style.display = 'none';
+          return;
+        }
+        // Validar tamaño (5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          alert('La imagen no debe pesar más de 5MB');
+          receiptInput.value = '';
+          receiptPreview.style.display = 'none';
+          return;
+        }
+
         const reader = new FileReader();
         reader.onload = (ev) => {
           receiptImg.src = ev.target.result;
@@ -217,22 +232,56 @@
     }).render('#paypal-button-container');
   }
 
-  // --- SUBIR COMPROBANTE ---
+  // --- SUBIR COMPROBANTE A SUPABASE STORAGE ---
   async function uploadReceipt(file) {
-    const fileExt = file.name.split('.').pop();
+    console.log('📤 Iniciando subida de comprobante...');
+    console.log('Archivo:', file.name, '| Tipo:', file.type, '| Tamaño:', file.size, 'bytes');
+
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+      throw new Error('El archivo debe ser una imagen (JPG, PNG, etc.)');
+    }
+
+    // Validar tamaño (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error('La imagen no debe pesar más de 5MB');
+    }
+
+    // Generar nombre único
+    const fileExt = file.name.split('.').pop().toLowerCase();
     const fileName = `receipt-${currentUser.id}-${Date.now()}.${fileExt}`;
+    console.log('Nombre en Storage:', fileName);
 
-    const { error } = await window.supabase.storage
-      .from('receipts')
-      .upload(fileName, file, { cacheControl: '3600', upsert: false });
+    try {
+      // 1. Subir archivo al bucket 'receipts'
+      const { data: uploadData, error: uploadError } = await window.supabase.storage
+        .from('receipts')
+        .upload(fileName, file, { 
+          cacheControl: '3600', 
+          upsert: false,
+          contentType: file.type
+        });
 
-    if (error) throw new Error('Error al subir comprobante: ' + error.message);
+      if (uploadError) {
+        console.error('❌ Error de Storage:', uploadError);
+        throw new Error('Error al subir imagen: ' + uploadError.message);
+      }
 
-    const { data: urlData } = window.supabase.storage
-      .from('receipts')
-      .getPublicUrl(fileName);
+      console.log('✅ Upload exitoso:', uploadData);
 
-    return urlData.publicUrl;
+      // 2. Obtener URL pública
+      const { data: urlData } = window.supabase.storage
+        .from('receipts')
+        .getPublicUrl(fileName);
+
+      console.log('🔗 URL pública:', urlData.publicUrl);
+
+      return urlData.publicUrl;
+
+    } catch (err) {
+      console.error('❌ Error completo:', err);
+      throw err;
+    }
   }
 
   // --- SUBMIT ---
@@ -264,15 +313,18 @@
     if (deliveryType === 'domicilio' && !deliveryAddress) return showError('Ingresa tu dirección.');
     if (!scheduleDate || !scheduleTime) return showError('Selecciona fecha y hora.');
 
-    // Validar comprobante para métodos no efectivo
+    // 1. Subir comprobante PRIMERO (si aplica)
     let receiptUrl = null;
     if (['qr', 'tarjeta', 'paypal'].includes(paymentMethod)) {
       if (!receiptInput || !receiptInput.files || receiptInput.files.length === 0) {
         return showError('Debes subir el comprobante de pago para continuar.');
       }
       try {
+        console.log('📎 Archivo seleccionado:', receiptInput.files[0]);
         receiptUrl = await uploadReceipt(receiptInput.files[0]);
+        console.log('✅ Comprobante subido, URL:', receiptUrl);
       } catch (err) {
+        console.error('❌ Error subiendo comprobante:', err);
         return showError(err.message);
       }
     }
@@ -299,6 +351,7 @@
         });
       });
 
+      // 2. Crear pedido CON receipt_url incluido en la RPC
       const { data: orderId, error: rpcError } = await window.supabase.rpc('create_order_with_stock_check', {
         p_user_id: currentUser.id,
         p_delivery_type: deliveryType,
@@ -306,7 +359,8 @@
         p_scheduled_time: scheduledDateTime,
         p_payment_method: paymentMethod,
         p_total: total,
-        p_items: itemsJson
+        p_items: itemsJson,
+        p_receipt_url: receiptUrl
       });
 
       if (rpcError) {
@@ -314,12 +368,6 @@
           throw new Error('Uno de los productos se agotó. Actualiza tu carrito.');
         }
         throw new Error(rpcError.message);
-      }
-
-      // Guardar comprobante en el pedido
-      // Guardar comprobante en el pedido
-      if (receiptUrl) {
-        await window.supabase.from('orders').update({ receipt_url: receiptUrl }).eq('id', orderId);
       }
 
       localStorage.removeItem('dulcemania_cart');
