@@ -1,6 +1,6 @@
 /* ============================================
-   STAFF.JS — Roles: kitchen, cashier, delivery
-   + Chat con el cliente en tiempo real
+   STAFF.JS — Roles: kitchen, cashier, delivery, admin
+   + Chat con el cliente + entrega de recojo/domicilio
    ============================================ */
 (function() {
   let allOrders = [];
@@ -16,30 +16,35 @@
     if (!profile) return;
     staffProfile = profile;
 
+    // Determinar rol
     if (profile.role === 'admin') {
       staffRole = 'admin';
     } else {
       staffRole = profile.staff_role || 'kitchen';
     }
 
+    // Mostrar UI
     document.getElementById('appLoader').style.display = 'none';
     document.getElementById('appWrapper').style.display = 'block';
     document.getElementById('userName').textContent = profile.full_name || 'Staff';
 
+    // Configurar UI según rol
     configureRoleUI();
     applyRoleVisibility();
 
+    // Eventos
     document.getElementById('btnLogout').addEventListener('click', () => window.logoutUser());
     document.getElementById('btnCloseDetail').addEventListener('click', () => {
       document.getElementById('orderDetailModal').classList.remove('active');
     });
 
-    // Configurar chat
+    // Chat
     initChat();
 
+    // Cargar datos
     await loadOrders();
 
-    // Realtime de pedidos
+    // Realtime
     window.supabase
       .channel('orders-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
@@ -50,7 +55,7 @@
       .subscribe();
   });
 
-  // --- CONFIGURAR UI SEGÚN ROL ---
+  // --- CONFIGURAR TÍTULOS, BADGE Y KPIs SEGÚN ROL ---
   function configureRoleUI() {
     const pageTitle = document.getElementById('pageTitle');
     const pageSubtitle = document.getElementById('pageSubtitle');
@@ -70,7 +75,7 @@
       `;
     } else if (staffRole === 'cashier') {
       pageTitle.textContent = 'Panel de Caja y Despacho';
-      pageSubtitle.textContent = 'Confirma pagos y entrega los pedidos listos.';
+      pageSubtitle.textContent = 'Confirma pagos y entrega los pedidos de recojo.';
       roleBadge.textContent = 'CAJERO';
       roleBadge.style.background = '#3b82f6';
       roleBadge.style.color = '#fff';
@@ -101,7 +106,7 @@
     }
   }
 
-  // --- VISIBILIDAD DE COLUMNAS ---
+  // --- VISIBILIDAD DE COLUMNAS SEGÚN ROL ---
   function applyRoleVisibility() {
     const cols = {
       pendientePago: document.getElementById('colPendientePago'),
@@ -110,33 +115,44 @@
       listo: document.getElementById('colListo')
     };
 
+    // Admin ve todo
     if (staffRole === 'admin') {
       Object.values(cols).forEach(c => { if (c) c.style.display = 'block'; });
       return;
     }
+
+    // CAJERO: ve pendientes de pago, confirmados (efectivo) y listos (para recojo)
     if (staffRole === 'cashier') {
       if (cols.pendientePago) cols.pendientePago.style.display = 'block';
       if (cols.confirmado) cols.confirmado.style.display = 'block';
-      if (cols.listo) cols.listo.style.display = 'block';
-      const title = document.getElementById('titleConfirmado');
-      if (title) title.textContent = '💵 Cobrar en Efectivo';
+      if (cols.listo) {
+        cols.listo.style.display = 'block';
+        const title = cols.listo.querySelector('.kanban-title');
+        if (title) title.textContent = '🟢 Listos (Recojo)';
+      }
+      const titleC = document.getElementById('titleConfirmado');
+      if (titleC) titleC.textContent = '💵 Cobrar en Efectivo';
     }
+
+    // COCINA: ve confirmados y en preparación
     if (staffRole === 'kitchen') {
       if (cols.confirmado) cols.confirmado.style.display = 'block';
       if (cols.preparacion) cols.preparacion.style.display = 'block';
-      const title = document.getElementById('titleConfirmado');
-      if (title) title.textContent = '🔵 Nuevos Pedidos';
+      const titleC = document.getElementById('titleConfirmado');
+      if (titleC) titleC.textContent = '🔵 Nuevos Pedidos';
     }
+
+    // REPARTIDOR: ve listos (para recoger) y en camino
     if (staffRole === 'delivery') {
       if (cols.listo) {
         cols.listo.style.display = 'block';
         const title = cols.listo.querySelector('.kanban-title');
-        if (title) title.textContent = '📦 Listos para Recoger';
+        if (title) title.textContent = '📦 Listos (Domicilio)';
       }
       if (cols.confirmado) {
         cols.confirmado.style.display = 'block';
-        const title = document.getElementById('titleConfirmado');
-        if (title) title.textContent = '🛵 En Camino';
+        const titleC = document.getElementById('titleConfirmado');
+        if (titleC) titleC.textContent = '🛵 En Camino';
       }
     }
   }
@@ -159,7 +175,12 @@
         .select('*')
         .in('status', statusFilter)
         .order('created_at', { ascending: true });
-      allOrders = (fallback || []).map(o => ({ ...o, client_name: 'Cliente', client_phone: null, delivery_person_name: null }));
+      allOrders = (fallback || []).map(o => ({ 
+        ...o, 
+        client_name: 'Cliente', 
+        client_phone: null, 
+        delivery_person_name: null 
+      }));
     } else {
       allOrders = data || [];
     }
@@ -190,17 +211,18 @@
       pendiente_pago: document.getElementById('col-pendiente_pago'),
       confirmado: document.getElementById('col-confirmado'),
       en_preparacion: document.getElementById('col-en_preparacion'),
-      listo: document.getElementById('col-listo'),
-      en_camino: document.getElementById('col-en_camino')
+      listo: document.getElementById('col-listo')
     };
     Object.values(containers).forEach(c => { if (c) c.innerHTML = ''; });
 
+    // Para el repartidor, "confirmado" también incluye "en_camino"
     const groups = {
       pendiente_pago: allOrders.filter(o => o.status === 'pendiente_pago'),
-      confirmado: allOrders.filter(o => o.status === 'confirmado'),
+      confirmado: allOrders.filter(o => 
+        o.status === 'confirmado' || (staffRole === 'delivery' && o.status === 'en_camino')
+      ),
       en_preparacion: allOrders.filter(o => o.status === 'en_preparacion'),
       listo: allOrders.filter(o => o.status === 'listo'),
-      en_camino: allOrders.filter(o => o.status === 'en_camino'),
     };
 
     const countP = document.getElementById('countPendientePago');
@@ -229,7 +251,7 @@
     const time = new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const deliveryText = o.delivery_type === 'domicilio' ? '🛵 Domicilio' : '🏪 Recojo';
     
-    // Para el repartidor, mostrar dirección y teléfono
+    // Info extra para el repartidor
     let extraInfo = '';
     if (staffRole === 'delivery' && o.delivery_type === 'domicilio') {
       extraInfo = `
@@ -242,7 +264,8 @@
 
     let actionBtn = '';
     
-    // Lógica por estado y rol
+    // ============ LÓGICA POR ESTADO Y ROL ============
+    
     if (o.status === 'pendiente_pago') {
       if (staffRole === 'cashier' || staffRole === 'admin') {
         actionBtn = `
@@ -252,28 +275,45 @@
           </div>
         `;
       }
-    } else if (o.status === 'confirmado') {
+    } 
+    else if (o.status === 'confirmado') {
       if (staffRole === 'kitchen' || staffRole === 'admin') {
         actionBtn = `<button class="btn-sm-action btn-prepare" onclick="event.stopPropagation(); window.__changeStatus(${o.id}, 'en_preparacion')">👨‍🍳 Preparar</button>`;
       } else if (staffRole === 'cashier' && o.payment_method === 'efectivo') {
         actionBtn = `<button class="btn-sm-action btn-pay" onclick="event.stopPropagation(); window.__confirmPayment(${o.id})">💵 Cobrar</button>`;
       }
-    } else if (o.status === 'en_preparacion') {
+    } 
+    else if (o.status === 'en_preparacion') {
       if (staffRole === 'kitchen' || staffRole === 'admin') {
         actionBtn = `<button class="btn-sm-action btn-ready" onclick="event.stopPropagation(); window.__changeStatus(${o.id}, 'listo')">✅ Marcar Listo</button>`;
       }
-    } else if (o.status === 'listo') {
-      if (staffRole === 'delivery' && o.delivery_type === 'domicilio') {
-        actionBtn = `
-          <div style="display:flex; gap:0.5rem; width:100%;">
-            <button class="btn-sm-action btn-deliver" onclick="event.stopPropagation(); window.__changeStatus(${o.id}, 'en_camino')" style="flex:2;">🛵 Recoger e ir</button>
-            <button class="btn-sm-action" onclick="event.stopPropagation(); window.__openChat(${o.id})" style="flex:1; background: rgba(59,130,246,0.2); color:#93c5fd;">💬</button>
-          </div>
-        `;
-      } else if (staffRole === 'cashier' || staffRole === 'admin') {
-        actionBtn = `<button class="btn-sm-action btn-deliver" onclick="event.stopPropagation(); window.__changeStatus(${o.id}, 'entregado')">📦 Marcar Entregado</button>`;
+    } 
+    else if (o.status === 'listo') {
+      // ============ CORRECCIÓN: RECOJO vs DOMICILIO ============
+      
+      if (o.delivery_type === 'recojo') {
+        // PEDIDO DE RECOJO: el cajero (o admin) lo entrega
+        if (staffRole === 'cashier' || staffRole === 'admin') {
+          actionBtn = `<button class="btn-sm-action btn-deliver" onclick="event.stopPropagation(); window.__changeStatus(${o.id}, 'entregado')">📦 Entregar al Cliente</button>`;
+        } else {
+          actionBtn = `<span style="font-size:0.8rem;color:#6ee7b7;">✅ Listo (esperando caja)</span>`;
+        }
+      } else {
+        // PEDIDO DE DOMICILIO: el repartidor lo recoge
+        if (staffRole === 'delivery' || staffRole === 'admin') {
+          actionBtn = `
+            <div style="display:flex; gap:0.5rem; width:100%;">
+              <button class="btn-sm-action btn-deliver" onclick="event.stopPropagation(); window.__changeStatus(${o.id}, 'en_camino')" style="flex:2;">🛵 Recoger e ir</button>
+              <button class="btn-sm-action" onclick="event.stopPropagation(); window.__openChat(${o.id})" style="flex:1; background: rgba(59,130,246,0.2); color:#93c5fd;">💬</button>
+            </div>
+          `;
+        } else {
+          actionBtn = `<span style="font-size:0.8rem;color:#6ee7b7;">✅ Listo (esperando repartidor)</span>`;
+        }
       }
-    } else if (o.status === 'en_camino') {
+    } 
+    else if (o.status === 'en_camino') {
+      // Solo repartidor/admin marca entregado
       if (staffRole === 'delivery' || staffRole === 'admin') {
         actionBtn = `
           <div style="display:flex; gap:0.5rem; width:100%;">
@@ -284,7 +324,6 @@
       }
     }
 
-    // Estilo del borde según estado
     const borderClass = `order-card--${o.status}`;
 
     return `
@@ -303,7 +342,7 @@
     `;
   }
 
-  // --- CAMBIAR ESTADO ---
+  // --- CAMBIAR ESTADO (Preparar / Listo / En Camino / Entregado) ---
   window.__changeStatus = async (orderId, newStatus) => {
     const idx = allOrders.findIndex(o => o.id === orderId);
     if (idx !== -1) {
@@ -332,10 +371,12 @@
       await loadOrders();
     } else if (newStatus === 'entregado') {
       alert(`✅ Pedido #${orderId} entregado correctamente.`);
+    } else if (newStatus === 'en_camino') {
+      alert(`🛵 Pedido #${orderId} en camino.`);
     }
   };
 
-  // --- CONFIRMAR PAGO ---
+  // --- CONFIRMAR PAGO (descuenta stock vía RPC) ---
   window.__confirmPayment = async (orderId) => {
     try {
       const { error } = await window.supabase
@@ -357,7 +398,7 @@
     }
   };
 
-  // --- CANCELAR PEDIDO ---
+  // --- CANCELAR PEDIDO PENDIENTE ---
   window.__cancelPendingOrder = async (orderId) => {
     if (!confirm(`¿Cancelar el pedido #${orderId}?`)) return;
     try {
@@ -392,6 +433,7 @@
       <p style="margin-bottom:0.25rem;"><strong>Entrega:</strong> ${deliveryText} ${order.delivery_address ? `- ${order.delivery_address}` : ''}</p>
       <p style="margin-bottom:0.25rem;"><strong>Pago:</strong> ${order.payment_method.toUpperCase()}</p>
       <p style="margin-bottom:0.25rem;"><strong>Hora programada:</strong> ${new Date(order.scheduled_time).toLocaleString()}</p>
+      ${order.delivery_person_name ? `<p style="margin-bottom:0.25rem;"><strong>Repartidor:</strong> ${order.delivery_person_name}</p>` : ''}
       <p><strong>Estado:</strong> <span class="status-badge status-${order.status}">${order.status}</span></p>
     `;
 
