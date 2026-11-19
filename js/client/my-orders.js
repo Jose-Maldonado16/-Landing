@@ -1,12 +1,11 @@
 /* ============================================
-   MY-ORDERS.JS — Historial de pedidos con timeline
-   + chat con el repartidor
+   MY-ORDERS.JS — Historial con timeline + chat
+   sin JOIN (evita error 406)
    ============================================ */
 (function() {
   let currentUser = null;
   let orders = [];
 
-  // Chat
   let currentChatOrderId = null;
   let chatSubscription = null;
 
@@ -91,7 +90,7 @@
       { key: 'pendiente_pago', label: 'Pago', icon: '💳' },
       { key: 'confirmado', label: 'Confirmado', icon: '✅' },
       { key: 'en_preparacion', label: 'Cocina', icon: '👨‍🍳' },
-      { key: 'listo', label: deliveryType === 'domicilio' ? 'Listo' : 'Listo', icon: '📦' },
+      { key: 'listo', label: 'Listo', icon: '📦' },
       { key: 'en_camino', label: 'En Camino', icon: '🛵' },
       { key: 'entregado', label: 'Entregado', icon: '🎉' }
     ];
@@ -100,7 +99,6 @@
     const currentIndex = statusOrder.indexOf(status);
 
     const timelineHtml = steps.map((step, index) => {
-      // Para recojo, no mostrar "en_camino"
       if (deliveryType === 'recojo' && step.key === 'en_camino') return '';
       
       let cls = 'timeline-step';
@@ -129,7 +127,6 @@
       cancelado: '❌ Cancelado'
     };
 
-    // Banner según estado
     let deliveryBanner = '';
     if (!isCancelled) {
       if (isOnTheWay) {
@@ -153,13 +150,11 @@
       deliveryBanner = `<div class="delivery-banner" style="background:rgba(239,68,68,0.15); color:#fca5a5; border-left:3px solid #ef4444;">❌ Este pedido fue cancelado.</div>`;
     }
 
-    // Botón de chat (solo si es domicilio y el pedido está en proceso)
     let chatButton = '';
     if (deliveryType === 'domicilio' && ['listo', 'en_camino'].includes(status) && !isCancelled) {
       chatButton = `<button class="btn btn--outline" onclick="window.__openChat(${order.id})" style="margin-top:1rem; width:100%;">💬 Chatear con el repartidor</button>`;
     }
 
-    // Items
     const itemsHtml = order.items.map(item => {
       const isComplemento = item.custom_notes?.startsWith('Complemento para');
       const name = item.products?.name || 'Producto';
@@ -246,7 +241,7 @@
       .subscribe();
   }
 
-  // --- CHAT ---
+  // --- CHAT (SIN JOIN) ---
   function initChat() {
     const btnCloseChat = document.getElementById('btnCloseChat');
     btnCloseChat?.addEventListener('click', () => {
@@ -283,31 +278,55 @@
     chatSubscription = window.supabase
       .channel(`chat-client-${orderId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'order_messages', filter: `order_id=eq.${orderId}` }, (payload) => {
-        appendChatMessage(payload.new);
+        // 🔧 Sin JOIN: recargar mensajes completos
+        loadChatMessages(orderId);
       })
       .subscribe();
   };
 
+  // 🔧 CORREGIDO: sin JOIN, dos queries separadas
   async function loadChatMessages(orderId) {
     const container = document.getElementById('chatMessages');
-    const { data } = await window.supabase
+    
+    // 1. Cargar mensajes (sin JOIN)
+    const { data: messages, error } = await window.supabase
       .from('order_messages')
-      .select('*, profiles:sender_id (full_name, role)')
+      .select('*')
       .eq('order_id', orderId)
       .order('created_at', { ascending: true });
 
-    if (!data || data.length === 0) {
+    if (error) {
+      console.error('Error cargando mensajes:', error);
+      container.innerHTML = `<p style="color: #fca5a5; text-align: center; font-size: 0.85rem;">Error al cargar mensajes.</p>`;
+      return;
+    }
+
+    if (!messages || messages.length === 0) {
       container.innerHTML = `<p style="color: var(--text-muted); text-align: center; font-size: 0.85rem;">No hay mensajes aún.</p>`;
       return;
     }
 
-    container.innerHTML = data.map(m => renderChatMessage(m)).join('');
+    // 2. Cargar perfiles por separado
+    const senderIds = [...new Set(messages.map(m => m.sender_id))];
+    const { data: profiles } = await window.supabase
+      .from('profiles')
+      .select('id, full_name, role')
+      .in('id', senderIds);
+
+    const profilesMap = {};
+    (profiles || []).forEach(p => { profilesMap[p.id] = p; });
+
+    // 3. Renderizar
+    container.innerHTML = messages.map(m => {
+      const sender = profilesMap[m.sender_id] || { full_name: 'Usuario', role: m.sender_role };
+      return renderChatMessage({ ...m, sender_name: sender.full_name });
+    }).join('');
     container.scrollTop = container.scrollHeight;
   }
 
   function renderChatMessage(msg) {
     const isMe = msg.sender_id === currentUser.id;
-    const senderName = msg.profiles?.full_name || 'Usuario';
+    const senderName = msg.sender_name || 'Usuario';
     const bubbleStyle = isMe 
       ? 'background: var(--brand-500); color: #fff; margin-left: auto;' 
       : 'background: #1e293b; color: var(--text-main); margin-right: auto;';
@@ -319,12 +338,5 @@
         <div style="font-size: 0.65rem; opacity: 0.7; margin-top: 0.2rem;">${new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</div>
       </div>
     `;
-  }
-
-  function appendChatMessage(msg) {
-    const container = document.getElementById('chatMessages');
-    if (container.querySelector('p')) container.innerHTML = '';
-    container.innerHTML += renderChatMessage(msg);
-    container.scrollTop = container.scrollHeight;
   }
 })();

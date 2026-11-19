@@ -1,6 +1,6 @@
 /* ============================================
    STAFF.JS — Roles: kitchen, cashier, delivery, admin
-   + Chat con el cliente + entrega de recojo/domicilio
+   + Chat sin JOIN (evita error 406)
    ============================================ */
 (function() {
   let allOrders = [];
@@ -16,35 +16,28 @@
     if (!profile) return;
     staffProfile = profile;
 
-    // Determinar rol
     if (profile.role === 'admin') {
       staffRole = 'admin';
     } else {
       staffRole = profile.staff_role || 'kitchen';
     }
 
-    // Mostrar UI
     document.getElementById('appLoader').style.display = 'none';
     document.getElementById('appWrapper').style.display = 'block';
     document.getElementById('userName').textContent = profile.full_name || 'Staff';
 
-    // Configurar UI según rol
     configureRoleUI();
     applyRoleVisibility();
 
-    // Eventos
     document.getElementById('btnLogout').addEventListener('click', () => window.logoutUser());
     document.getElementById('btnCloseDetail').addEventListener('click', () => {
       document.getElementById('orderDetailModal').classList.remove('active');
     });
 
-    // Chat
     initChat();
 
-    // Cargar datos
     await loadOrders();
 
-    // Realtime
     window.supabase
       .channel('orders-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
@@ -55,7 +48,7 @@
       .subscribe();
   });
 
-  // --- CONFIGURAR TÍTULOS, BADGE Y KPIs SEGÚN ROL ---
+  // --- CONFIGURAR UI SEGÚN ROL ---
   function configureRoleUI() {
     const pageTitle = document.getElementById('pageTitle');
     const pageSubtitle = document.getElementById('pageSubtitle');
@@ -115,13 +108,11 @@
       listo: document.getElementById('colListo')
     };
 
-    // Admin ve todo
     if (staffRole === 'admin') {
       Object.values(cols).forEach(c => { if (c) c.style.display = 'block'; });
       return;
     }
 
-    // CAJERO: ve pendientes de pago, confirmados (efectivo) y listos (para recojo)
     if (staffRole === 'cashier') {
       if (cols.pendientePago) cols.pendientePago.style.display = 'block';
       if (cols.confirmado) cols.confirmado.style.display = 'block';
@@ -130,11 +121,11 @@
         const title = cols.listo.querySelector('.kanban-title');
         if (title) title.textContent = '🟢 Listos (Recojo)';
       }
+      // ✅ TÍTULO CORREGIDO: "En Preparación" en lugar de "Cobrar en Efectivo"
       const titleC = document.getElementById('titleConfirmado');
-      if (titleC) titleC.textContent = '💵 Cobrar en Efectivo';
+      if (titleC) titleC.textContent = '👨‍🍳 En Preparación';
     }
 
-    // COCINA: ve confirmados y en preparación
     if (staffRole === 'kitchen') {
       if (cols.confirmado) cols.confirmado.style.display = 'block';
       if (cols.preparacion) cols.preparacion.style.display = 'block';
@@ -142,7 +133,6 @@
       if (titleC) titleC.textContent = '🔵 Nuevos Pedidos';
     }
 
-    // REPARTIDOR: ve listos (para recoger) y en camino
     if (staffRole === 'delivery') {
       if (cols.listo) {
         cols.listo.style.display = 'block';
@@ -215,7 +205,6 @@
     };
     Object.values(containers).forEach(c => { if (c) c.innerHTML = ''; });
 
-    // Para el repartidor, "confirmado" también incluye "en_camino"
     const groups = {
       pendiente_pago: allOrders.filter(o => o.status === 'pendiente_pago'),
       confirmado: allOrders.filter(o => 
@@ -251,7 +240,6 @@
     const time = new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const deliveryText = o.delivery_type === 'domicilio' ? '🛵 Domicilio' : '🏪 Recojo';
     
-    // Info extra para el repartidor
     let extraInfo = '';
     if (staffRole === 'delivery' && o.delivery_type === 'domicilio') {
       extraInfo = `
@@ -263,8 +251,6 @@
     }
 
     let actionBtn = '';
-    
-    // ============ LÓGICA POR ESTADO Y ROL ============
     
     if (o.status === 'pendiente_pago') {
       if (staffRole === 'cashier' || staffRole === 'admin') {
@@ -289,17 +275,13 @@
       }
     } 
     else if (o.status === 'listo') {
-      // ============ CORRECCIÓN: RECOJO vs DOMICILIO ============
-      
       if (o.delivery_type === 'recojo') {
-        // PEDIDO DE RECOJO: el cajero (o admin) lo entrega
         if (staffRole === 'cashier' || staffRole === 'admin') {
           actionBtn = `<button class="btn-sm-action btn-deliver" onclick="event.stopPropagation(); window.__changeStatus(${o.id}, 'entregado')">📦 Entregar al Cliente</button>`;
         } else {
           actionBtn = `<span style="font-size:0.8rem;color:#6ee7b7;">✅ Listo (esperando caja)</span>`;
         }
       } else {
-        // PEDIDO DE DOMICILIO: el repartidor lo recoge
         if (staffRole === 'delivery' || staffRole === 'admin') {
           actionBtn = `
             <div style="display:flex; gap:0.5rem; width:100%;">
@@ -313,7 +295,6 @@
       }
     } 
     else if (o.status === 'en_camino') {
-      // Solo repartidor/admin marca entregado
       if (staffRole === 'delivery' || staffRole === 'admin') {
         actionBtn = `
           <div style="display:flex; gap:0.5rem; width:100%;">
@@ -342,7 +323,7 @@
     `;
   }
 
-  // --- CAMBIAR ESTADO (Preparar / Listo / En Camino / Entregado) ---
+  // --- CAMBIAR ESTADO ---
   window.__changeStatus = async (orderId, newStatus) => {
     const idx = allOrders.findIndex(o => o.id === orderId);
     if (idx !== -1) {
@@ -356,7 +337,6 @@
     if (newStatus === 'entregado') {
       updateData.delivered_at = new Date().toISOString();
     }
-    // Asignar repartidor si es delivery y está recogiendo
     if (newStatus === 'en_camino' && staffRole === 'delivery') {
       updateData.delivery_person_id = staffProfile.id;
     }
@@ -376,7 +356,7 @@
     }
   };
 
-  // --- CONFIRMAR PAGO (descuenta stock vía RPC) ---
+  // --- CONFIRMAR PAGO ---
   window.__confirmPayment = async (orderId) => {
     try {
       const { error } = await window.supabase
@@ -398,7 +378,7 @@
     }
   };
 
-  // --- CANCELAR PEDIDO PENDIENTE ---
+  // --- CANCELAR PEDIDO ---
   window.__cancelPendingOrder = async (orderId) => {
     if (!confirm(`¿Cancelar el pedido #${orderId}?`)) return;
     try {
@@ -411,7 +391,7 @@
     }
   };
 
-  // --- VER DETALLE DEL PEDIDO ---
+  // --- VER DETALLE ---
   window.__viewOrderDetail = async (orderId) => {
     const modal = document.getElementById('orderDetailModal');
     if (!modal) return;
@@ -469,7 +449,7 @@
     `;
   };
 
-  // --- CHAT ---
+  // --- CHAT (SIN JOIN — evita error 406) ---
   function initChat() {
     const btnCloseChat = document.getElementById('btnCloseChat');
     btnCloseChat?.addEventListener('click', () => {
@@ -509,31 +489,55 @@
     chatSubscription = window.supabase
       .channel(`chat-${orderId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'order_messages', filter: `order_id=eq.${orderId}` }, (payload) => {
-        appendChatMessage(payload.new);
+        // 🔧 Sin JOIN: recargar mensajes completos para evitar 406
+        loadChatMessages(orderId);
       })
       .subscribe();
   };
 
+  // 🔧 CORREGIDO: sin JOIN, dos queries separadas
   async function loadChatMessages(orderId) {
     const container = document.getElementById('chatMessages');
-    const { data, error } = await window.supabase
+    
+    // 1. Cargar mensajes (sin JOIN)
+    const { data: messages, error } = await window.supabase
       .from('order_messages')
-      .select('*, profiles:sender_id (full_name, role)')
+      .select('*')
       .eq('order_id', orderId)
       .order('created_at', { ascending: true });
 
-    if (error || !data || data.length === 0) {
+    if (error) {
+      console.error('Error cargando mensajes:', error);
+      container.innerHTML = `<p style="color: #fca5a5; text-align: center; font-size: 0.85rem;">Error al cargar mensajes.</p>`;
+      return;
+    }
+
+    if (!messages || messages.length === 0) {
       container.innerHTML = `<p style="color: var(--text-muted); text-align: center; font-size: 0.85rem;">No hay mensajes aún. Inicia la conversación.</p>`;
       return;
     }
 
-    container.innerHTML = data.map(m => renderChatMessage(m)).join('');
+    // 2. Cargar perfiles de los remitentes en una segunda query
+    const senderIds = [...new Set(messages.map(m => m.sender_id))];
+    const { data: profiles } = await window.supabase
+      .from('profiles')
+      .select('id, full_name, role')
+      .in('id', senderIds);
+
+    const profilesMap = {};
+    (profiles || []).forEach(p => { profilesMap[p.id] = p; });
+
+    // 3. Renderizar
+    container.innerHTML = messages.map(m => {
+      const sender = profilesMap[m.sender_id] || { full_name: 'Usuario', role: m.sender_role };
+      return renderChatMessage({ ...m, sender_name: sender.full_name });
+    }).join('');
     container.scrollTop = container.scrollHeight;
   }
 
   function renderChatMessage(msg) {
     const isMe = msg.sender_id === staffProfile.id;
-    const senderName = msg.profiles?.full_name || 'Usuario';
+    const senderName = msg.sender_name || 'Usuario';
     const bubbleStyle = isMe 
       ? 'background: var(--brand-500); color: #fff; margin-left: auto;' 
       : 'background: #1e293b; color: var(--text-main); margin-right: auto;';
@@ -545,12 +549,5 @@
         <div style="font-size: 0.65rem; opacity: 0.7; margin-top: 0.2rem;">${new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</div>
       </div>
     `;
-  }
-
-  function appendChatMessage(msg) {
-    const container = document.getElementById('chatMessages');
-    if (container.querySelector('p')) container.innerHTML = '';
-    container.innerHTML += renderChatMessage(msg);
-    container.scrollTop = container.scrollHeight;
   }
 })();
