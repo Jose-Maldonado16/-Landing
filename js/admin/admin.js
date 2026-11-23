@@ -1,5 +1,6 @@
 /* ============================================
    ADMIN.JS — Dashboard, Productos, Pedidos, Usuarios
+   + Visualización de evidencia de entrega
    ============================================ */
 (function() {
   let allProducts = [];
@@ -225,6 +226,7 @@
     const clientName = order.profiles?.full_name || 'Cliente';
     const deliveryText = order.delivery_type === 'domicilio' ? '🛵 Domicilio' : '🏪 Recojo';
 
+    // Comprobante
     let receiptHtml = '';
     if (order.receipt_url) {
       receiptHtml = `
@@ -237,6 +239,41 @@
       `;
     }
 
+    // Evidencia de entrega
+    let evidenceHtml = '';
+    try {
+      const { data: evidence } = await window.supabase
+        .rpc('get_delivery_evidence', { p_order_id: orderId });
+
+      if (evidence && evidence.length > 0) {
+        const ev = evidence[0];
+        evidenceHtml = `
+          <div style="margin-top:1.5rem; padding:1rem; background:rgba(16,185,129,0.1); border-radius:0.5rem; border:1px solid rgba(16,185,129,0.3);">
+            <p style="font-size:0.95rem; color:#6ee7b7; font-weight:700; margin-bottom:0.75rem;">✅ Evidencia de Entrega</p>
+            <p style="margin-bottom:0.25rem; font-size:0.85rem;"><strong>Recibido por:</strong> ${ev.receiver_name}</p>
+            ${ev.receiver_id_number ? `<p style="margin-bottom:0.25rem; font-size:0.85rem;"><strong>CI:</strong> ${ev.receiver_id_number}</p>` : ''}
+            <p style="margin-bottom:0.25rem; font-size:0.85rem;"><strong>Entregado por:</strong> ${ev.delivered_by_name || 'Repartidor'}</p>
+            <p style="margin-bottom:0.5rem; font-size:0.85rem;"><strong>Fecha:</strong> ${new Date(ev.delivered_at).toLocaleString()}</p>
+            ${ev.notes ? `<p style="margin-bottom:0.5rem; font-size:0.85rem;"><strong>Notas:</strong> ${ev.notes}</p>` : ''}
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-top:0.75rem;">
+              <div>
+                <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem;">Firma:</p>
+                <img src="${ev.signature_url}" alt="Firma" style="width:100%; background:#fff; border-radius:0.5rem; border:1px solid var(--border-dark); cursor:pointer;" onclick="window.open('${ev.signature_url}', '_blank')" />
+              </div>
+              ${ev.photo_url ? `
+                <div>
+                  <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem;">Foto:</p>
+                  <img src="${ev.photo_url}" alt="Foto" style="width:100%; border-radius:0.5rem; border:1px solid var(--border-dark); cursor:pointer;" onclick="window.open('${ev.photo_url}', '_blank')" />
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }
+    } catch (err) {
+      console.error('Error cargando evidencia:', err);
+    }
+
     document.getElementById('detailOrderInfo').innerHTML = `
       <p style="margin-bottom:0.25rem;"><strong>Cliente:</strong> ${clientName}</p>
       <p style="margin-bottom:0.25rem;"><strong>Entrega:</strong> ${deliveryText} ${order.delivery_address ? `- ${order.delivery_address}` : ''}</p>
@@ -244,6 +281,7 @@
       <p style="margin-bottom:0.25rem;"><strong>Hora programada:</strong> ${new Date(order.scheduled_time).toLocaleString()}</p>
       <p><strong>Estado:</strong> <span class="status-badge status-${order.status}">${order.status}</span></p>
       ${receiptHtml}
+      ${evidenceHtml}
     `;
 
     const { data: items } = await window.supabase
@@ -269,7 +307,6 @@
           </div>
           <div style="font-weight:700;">Bs. ${i.subtotal}</div>
         </div>
-        ${i.custom_notes && !isComplemento ? `<div style="font-size:0.8rem; color:var(--accent-500); margin-top:0.25rem;">📝 ${i.custom_notes}</div>` : ''}
       `;
     }).join('') + `
       <div style="display:flex; justify-content:space-between; margin-top:1rem; padding-top:0.5rem; border-top:2px solid var(--border-dark); font-weight:800; font-size:1.1rem;">
@@ -348,7 +385,6 @@
     const form = document.getElementById('userForm');
     
     document.getElementById('btnCancelUser').addEventListener('click', () => modal.classList.remove('active'));
-
     document.getElementById('userRole').addEventListener('change', toggleStaffRoleGroup);
 
     form.addEventListener('submit', async (e) => {
@@ -369,9 +405,8 @@
         .update(updateData)
         .eq('id', userId);
 
-      if (error) {
-        alert('Error al actualizar: ' + error.message);
-      } else {
+      if (error) alert('Error al actualizar: ' + error.message);
+      else {
         alert('✅ Usuario actualizado correctamente.');
         modal.classList.remove('active');
         await loadUsers();
@@ -403,7 +438,6 @@
     document.getElementById('userStaffRole').value = user.staff_role || '';
     
     toggleStaffRoleGroup();
-    
     document.getElementById('userModal').classList.add('active');
   };
 

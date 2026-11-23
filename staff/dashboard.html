@@ -248,7 +248,61 @@
       <button type="button" id="btnCloseChat" class="btn btn--outline" style="width: 100%; margin-top: 1rem;">Cerrar</button>
     </div>
   </div>
+    <!-- MODAL DE EVIDENCIA DE ENTREGA -->
+  <div id="evidenceModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 600px;">
+      <h2 id="evidenceTitle">Evidencia de Entrega</h2>
+      
+      <form id="evidenceForm">
+        <input type="hidden" id="evidenceOrderId" />
+        
+        <div class="form-group">
+          <label>Nombre de quien recibe *</label>
+          <input type="text" id="receiverName" placeholder="Ej: Juan Pérez" required />
+        </div>
+        
+        <div class="form-group">
+          <label>CI / Documento</label>
+          <input type="text" id="receiverIdNumber" placeholder="Ej: 12345678" />
+        </div>
+        
+        <div class="form-group">
+          <label>Notas (opcional)</label>
+          <textarea id="evidenceNotes" rows="2" placeholder="Ej: Entregado en portería, recibió familiar..."></textarea>
+        </div>
 
+        <!-- Firma virtual -->
+        <div class="form-group">
+          <label>Firma del receptor *</label>
+          <div style="background: #fff; border-radius: 0.5rem; border: 2px dashed var(--border-dark); padding: 0.5rem;">
+            <canvas id="signatureCanvas" width="500" height="200" style="width: 100%; max-width: 500px; height: 200px; background: #f8fafc; border-radius: 0.25rem; cursor: crosshair; touch-action: none;"></canvas>
+          </div>
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+            <button type="button" id="btnClearSignature" class="btn btn--outline btn--sm" style="flex: 1;">🗑️ Limpiar Firma</button>
+          </div>
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
+            Firma con el mouse o el dedo (en móvil).
+          </p>
+        </div>
+
+        <!-- Foto del paquete (opcional) -->
+        <div class="form-group">
+          <label>Foto del paquete entregado (opcional)</label>
+          <input type="file" id="evidencePhoto" accept="image/*" style="width: 100%; padding: 0.5rem; background: var(--card-dark); border: 1px solid var(--border-dark); border-radius: 0.5rem; color: var(--text-main);" />
+          <div id="evidencePhotoPreview" style="margin-top: 0.5rem; display: none;">
+            <img id="evidencePhotoImg" style="max-width: 100%; max-height: 150px; border-radius: 0.5rem;" />
+          </div>
+        </div>
+
+        <div id="evidenceError" class="auth-error hidden" style="margin-bottom: 1rem;"></div>
+
+        <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+          <button type="button" id="btnCancelEvidence" class="btn btn--outline" style="flex: 1;">Cancelar</button>
+          <button type="submit" class="btn btn--primary" style="flex: 1;">✅ Confirmar Entrega</button>
+        </div>
+      </form>
+    </div>
+  </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/js/supabaseClient.js"></script>
   <script src="/js/staff/staff.js"></script>

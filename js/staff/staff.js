@@ -1,5 +1,6 @@
 /* ============================================
    STAFF.JS — Roles + chat + comprobante
+   + Evidencia de entrega con firma virtual
    ============================================ */
 (function() {
   let allOrders = [];
@@ -8,6 +9,11 @@
 
   let currentChatOrderId = null;
   let chatSubscription = null;
+
+  // Firma
+  let signatureCanvas = null;
+  let signatureCtx = null;
+  let isDrawing = false;
 
   document.addEventListener('DOMContentLoaded', async () => {
     const profile = await window.guardPage(['staff', 'admin']);
@@ -33,6 +39,7 @@
     });
 
     initChat();
+    initEvidenceModal();
 
     await loadOrders();
 
@@ -97,7 +104,7 @@
     }
   }
 
-  // --- VISIBILIDAD ---
+  // --- VISIBILIDAD DE COLUMNAS ---
   function applyRoleVisibility() {
     const cols = {
       pendientePago: document.getElementById('colPendientePago'),
@@ -280,7 +287,7 @@
     else if (o.status === 'listo') {
       if (o.delivery_type === 'recojo') {
         if (staffRole === 'cashier' || staffRole === 'admin') {
-          actionBtn = `<button class="btn-sm-action btn-deliver" onclick="event.stopPropagation(); window.__changeStatus(${o.id}, 'entregado')">📦 Entregar al Cliente</button>`;
+          actionBtn = `<button class="btn-sm-action btn-deliver" onclick="event.stopPropagation(); window.__openEvidence(${o.id})">📸 Entregar al Cliente</button>`;
         } else {
           actionBtn = `<span style="font-size:0.8rem;color:#6ee7b7;">✅ Listo (esperando caja)</span>`;
         }
@@ -301,7 +308,7 @@
       if (staffRole === 'delivery' || staffRole === 'admin') {
         actionBtn = `
           <div style="display:flex; gap:0.5rem; width:100%;">
-            <button class="btn-sm-action btn-deliver" onclick="event.stopPropagation(); window.__changeStatus(${o.id}, 'entregado')" style="flex:2;">✅ Entregado</button>
+            <button class="btn-sm-action btn-deliver" onclick="event.stopPropagation(); window.__openEvidence(${o.id})" style="flex:2;">📸 Confirmar Entrega</button>
             <button class="btn-sm-action" onclick="event.stopPropagation(); window.__openChat(${o.id})" style="flex:1; background: rgba(59,130,246,0.2); color:#93c5fd;">💬</button>
           </div>
         `;
@@ -403,7 +410,6 @@
     const modal = document.getElementById('orderDetailModal');
     if (!modal) return;
 
-    // 🔍 LOG DE DIAGNÓSTICO
     const order = allOrders.find(o => o.id === orderId);
     console.log('🔍 Cajero ve pedido:', {
       id: order?.id,
@@ -422,11 +428,9 @@
     const clientName = order.client_name || 'Cliente';
     const deliveryText = order.delivery_type === 'domicilio' ? '🛵 Domicilio' : '🏪 Recojo';
 
-    // --- COMPROBANTE ---
+    // Comprobante
     let receiptHtml = '';
     if (order.receipt_url) {
-      console.log('📎 Renderizando comprobante:', order.receipt_url);
-
       let actionButtons = '';
       if (order.status === 'pendiente_pago' && (staffRole === 'cashier' || staffRole === 'admin')) {
         actionButtons = `
@@ -437,7 +441,7 @@
             </button>
             <button onclick="window.__rejectReceipt(${order.id})" 
                     style="flex:1; padding:0.75rem; background:#ef4444; color:#fff; border:none; border-radius:0.5rem; font-weight:700; cursor:pointer; font-size:0.95rem;">
-              ❌ Rechazar Comprobante
+              ❌ Rechazar
             </button>
           </div>
         `;
@@ -447,32 +451,46 @@
         <div style="margin-top:1.5rem; padding:1rem; background:#0b1120; border-radius:0.5rem; border:1px solid var(--border-dark);">
           <p style="font-size:0.9rem; color:var(--text-main); margin-bottom:0.75rem; font-weight:700;">📎 Comprobante de pago:</p>
           <a href="${order.receipt_url}" target="_blank" style="display:block;">
-            <img src="${order.receipt_url}" alt="Comprobante de pago" 
-                 style="width:100%; max-height:400px; object-fit:contain; border-radius:0.5rem; border:1px solid var(--border-dark); background:#fff; cursor:zoom-in;" 
-                 onerror="this.style.display='none'; this.parentElement.innerHTML='<p style=\\'color:#fca5a5;font-size:0.85rem;\\'>⚠️ No se pudo cargar la imagen. <a href=\\'${order.receipt_url}\\' target=\\'_blank\\' style=\\'color:#93c5fd;\\'>Abrir en nueva pestaña</a></p>';" />
+            <img src="${order.receipt_url}" alt="Comprobante" style="width:100%; max-height:400px; object-fit:contain; border-radius:0.5rem; border:1px solid var(--border-dark); background:#fff; cursor:zoom-in;" />
           </a>
-          <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.5rem; text-align:center;">
-            👆 Clic en la imagen para verla en tamaño completo
-          </p>
           ${actionButtons}
         </div>
       `;
-    } else if (order.status === 'pendiente_pago') {
-      console.log('⚠️ Pedido pendiente SIN receipt_url');
-      receiptHtml = `
-        <div style="margin-top:1.5rem; padding:1rem; background:rgba(239,68,68,0.1); border-radius:0.5rem; border:1px solid rgba(239,68,68,0.3);">
-          <p style="font-size:0.9rem; color:#fca5a5; font-weight:700;">⚠️ Sin comprobante adjunto</p>
-          <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.25rem;">
-            ${order.payment_method === 'efectivo' ? 'Este pedido es en efectivo. Confirma el pago cuando el cliente pague en caja.' : 'El cliente debe subir un comprobante de pago antes de confirmar.'}
-          </p>
-          ${order.payment_method === 'efectivo' && (staffRole === 'cashier' || staffRole === 'admin') ? `
-            <button onclick="window.__confirmPayment(${order.id}); document.getElementById('orderDetailModal').classList.remove('active');" 
-                    style="width:100%; margin-top:0.75rem; padding:0.75rem; background:#10b981; color:#fff; border:none; border-radius:0.5rem; font-weight:700; cursor:pointer;">
-              💵 Confirmar Pago en Efectivo
-            </button>
-          ` : ''}
-        </div>
-      `;
+    }
+
+    // Evidencia de entrega (si existe)
+    let evidenceHtml = '';
+    try {
+      const { data: evidence } = await window.supabase
+        .rpc('get_delivery_evidence', { p_order_id: orderId });
+
+      if (evidence && evidence.length > 0) {
+        const ev = evidence[0];
+        evidenceHtml = `
+          <div style="margin-top:1.5rem; padding:1rem; background:rgba(16,185,129,0.1); border-radius:0.5rem; border:1px solid rgba(16,185,129,0.3);">
+            <p style="font-size:0.95rem; color:#6ee7b7; font-weight:700; margin-bottom:0.75rem;">✅ Evidencia de Entrega</p>
+            <p style="margin-bottom:0.25rem; font-size:0.85rem;"><strong>Recibido por:</strong> ${ev.receiver_name}</p>
+            ${ev.receiver_id_number ? `<p style="margin-bottom:0.25rem; font-size:0.85rem;"><strong>CI:</strong> ${ev.receiver_id_number}</p>` : ''}
+            <p style="margin-bottom:0.25rem; font-size:0.85rem;"><strong>Entregado por:</strong> ${ev.delivered_by_name || 'Repartidor'}</p>
+            <p style="margin-bottom:0.5rem; font-size:0.85rem;"><strong>Fecha:</strong> ${new Date(ev.delivered_at).toLocaleString()}</p>
+            ${ev.notes ? `<p style="margin-bottom:0.5rem; font-size:0.85rem;"><strong>Notas:</strong> ${ev.notes}</p>` : ''}
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-top:0.75rem;">
+              <div>
+                <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem;">Firma:</p>
+                <img src="${ev.signature_url}" alt="Firma" style="width:100%; background:#fff; border-radius:0.5rem; border:1px solid var(--border-dark); cursor:pointer;" onclick="window.open('${ev.signature_url}', '_blank')" />
+              </div>
+              ${ev.photo_url ? `
+                <div>
+                  <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem;">Foto:</p>
+                  <img src="${ev.photo_url}" alt="Foto" style="width:100%; border-radius:0.5rem; border:1px solid var(--border-dark); cursor:pointer;" onclick="window.open('${ev.photo_url}', '_blank')" />
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }
+    } catch (err) {
+      console.error('Error cargando evidencia:', err);
     }
 
     document.getElementById('detailOrderInfo').innerHTML = `
@@ -484,9 +502,9 @@
       ${order.delivery_person_name ? `<p style="margin-bottom:0.25rem;"><strong>Repartidor:</strong> ${order.delivery_person_name}</p>` : ''}
       <p><strong>Estado:</strong> <span class="status-badge status-${order.status}">${order.status}</span></p>
       ${receiptHtml}
+      ${evidenceHtml}
     `;
 
-    // --- ITEMS ---
     const { data: items, error } = await window.supabase
       .from('order_items')
       .select(`*, products:product_id (name)`)
@@ -525,16 +543,13 @@
     try {
       const { error } = await window.supabase
         .from('orders')
-        .update({ 
-          status: 'pendiente_pago',
-          receipt_url: null 
-        })
+        .update({ status: 'pendiente_pago', receipt_url: null })
         .eq('id', orderId);
 
       if (error) {
         alert('Error al rechazar: ' + error.message);
       } else {
-        alert('❌ Comprobante rechazado. El cliente deberá subir uno nuevo.');
+        alert('❌ Comprobante rechazado.');
         document.getElementById('orderDetailModal').classList.remove('active');
         await loadOrders();
       }
@@ -542,6 +557,219 @@
       alert('Error: ' + err.message);
     }
   };
+
+  // ============================================
+  // EVIDENCIA DE ENTREGA
+  // ============================================
+  function initEvidenceModal() {
+    const modal = document.getElementById('evidenceModal');
+    const form = document.getElementById('evidenceForm');
+    const canvas = document.getElementById('signatureCanvas');
+    const btnClear = document.getElementById('btnClearSignature');
+    const btnCancel = document.getElementById('btnCancelEvidence');
+    const photoInput = document.getElementById('evidencePhoto');
+
+    if (!canvas) return;
+
+    signatureCanvas = canvas;
+    signatureCtx = canvas.getContext('2d');
+
+    canvas.width = 500;
+    canvas.height = 200;
+    signatureCtx.fillStyle = '#f8fafc';
+    signatureCtx.fillRect(0, 0, canvas.width, canvas.height);
+    signatureCtx.strokeStyle = '#0f172a';
+    signatureCtx.lineWidth = 2;
+    signatureCtx.lineCap = 'round';
+    signatureCtx.lineJoin = 'round';
+
+    const getPos = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+      };
+    };
+
+    const startDrawing = (e) => {
+      e.preventDefault();
+      isDrawing = true;
+      const pos = getPos(e);
+      signatureCtx.beginPath();
+      signatureCtx.moveTo(pos.x, pos.y);
+    };
+
+    const draw = (e) => {
+      if (!isDrawing) return;
+      e.preventDefault();
+      const pos = getPos(e);
+      signatureCtx.lineTo(pos.x, pos.y);
+      signatureCtx.stroke();
+    };
+
+    const stopDrawing = () => { isDrawing = false; };
+
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseleave', stopDrawing);
+    canvas.addEventListener('touchstart', startDrawing);
+    canvas.addEventListener('touchmove', draw);
+    canvas.addEventListener('touchend', stopDrawing);
+
+    btnClear?.addEventListener('click', () => {
+      signatureCtx.fillStyle = '#f8fafc';
+      signatureCtx.fillRect(0, 0, canvas.width, canvas.height);
+    });
+
+    photoInput?.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      const preview = document.getElementById('evidencePhotoPreview');
+      const img = document.getElementById('evidencePhotoImg');
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          img.src = ev.target.result;
+          preview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      } else {
+        preview.style.display = 'none';
+      }
+    });
+
+    btnCancel?.addEventListener('click', () => {
+      modal.classList.remove('active');
+    });
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await submitEvidence();
+    });
+  }
+
+  function isCanvasEmpty() {
+    if (!signatureCanvas) return true;
+    const blank = document.createElement('canvas');
+    blank.width = signatureCanvas.width;
+    blank.height = signatureCanvas.height;
+    return signatureCanvas.toDataURL() === blank.toDataURL();
+  }
+
+  window.__openEvidence = (orderId) => {
+    const modal = document.getElementById('evidenceModal');
+    if (!modal) return;
+
+    document.getElementById('evidenceOrderId').value = orderId;
+    document.getElementById('evidenceForm').reset();
+    document.getElementById('evidenceError').classList.add('hidden');
+    document.getElementById('evidencePhotoPreview').style.display = 'none';
+    document.getElementById('evidenceTitle').textContent = `Evidencia de Entrega — Pedido #${orderId}`;
+
+    if (signatureCtx) {
+      signatureCtx.fillStyle = '#f8fafc';
+      signatureCtx.fillRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+    }
+
+    modal.classList.add('active');
+  };
+
+  async function uploadEvidenceFile(file, prefix) {
+    const fileExt = file.name ? file.name.split('.').pop() : 'png';
+    const fileName = `${prefix}-${staffProfile.id}-${Date.now()}.${fileExt}`;
+
+    const { error } = await window.supabase.storage
+      .from('delivery-evidence')
+      .upload(fileName, file, { cacheControl: '3600', upsert: false });
+
+    if (error) throw new Error('Error al subir archivo: ' + error.message);
+
+    const { data: urlData } = window.supabase.storage
+      .from('delivery-evidence')
+      .getPublicUrl(fileName);
+
+    return urlData.publicUrl;
+  }
+
+  async function submitEvidence() {
+    const errorEl = document.getElementById('evidenceError');
+    const btn = document.querySelector('#evidenceForm button[type="submit"]');
+    errorEl.classList.add('hidden');
+
+    const orderId = parseInt(document.getElementById('evidenceOrderId').value);
+    const receiverName = document.getElementById('receiverName').value.trim();
+    const receiverIdNumber = document.getElementById('receiverIdNumber').value.trim();
+    const notes = document.getElementById('evidenceNotes').value.trim();
+    const photoInput = document.getElementById('evidencePhoto');
+
+    if (!receiverName) {
+      return showEvidenceError('Ingresa el nombre de quien recibe.');
+    }
+
+    if (isCanvasEmpty()) {
+      return showEvidenceError('Se requiere la firma del receptor.');
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Guardando evidencia...';
+
+    try {
+      const signatureBlob = await new Promise(resolve => {
+        signatureCanvas.toBlob(resolve, 'image/png');
+      });
+      const signatureFile = new File([signatureBlob], 'signature.png', { type: 'image/png' });
+      const signatureUrl = await uploadEvidenceFile(signatureFile, `sig-order${orderId}`);
+
+      let photoUrl = null;
+      if (photoInput.files && photoInput.files.length > 0) {
+        photoUrl = await uploadEvidenceFile(photoInput.files[0], `photo-order${orderId}`);
+      }
+
+      const { error: insertError } = await window.supabase
+        .from('delivery_evidence')
+        .insert({
+          order_id: orderId,
+          receiver_name: receiverName,
+          receiver_id_number: receiverIdNumber || null,
+          signature_url: signatureUrl,
+          photo_url: photoUrl,
+          delivered_by: staffProfile.id,
+          notes: notes || null
+        });
+
+      if (insertError) throw insertError;
+
+      const { error: updateError } = await window.supabase
+        .from('orders')
+        .update({ 
+          status: 'entregado',
+          delivered_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+
+      if (updateError) throw updateError;
+
+      alert(`✅ Entrega confirmada para el pedido #${orderId}`);
+      document.getElementById('evidenceModal').classList.remove('active');
+      await loadOrders();
+
+    } catch (err) {
+      console.error('Error guardando evidencia:', err);
+      showEvidenceError(err.message);
+      btn.disabled = false;
+      btn.textContent = '✅ Confirmar Entrega';
+    }
+  }
+
+  function showEvidenceError(msg) {
+    const errorEl = document.getElementById('evidenceError');
+    errorEl.textContent = msg;
+    errorEl.classList.remove('hidden');
+  }
 
   // --- CHAT ---
   function initChat() {
