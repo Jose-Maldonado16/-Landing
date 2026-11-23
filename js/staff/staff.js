@@ -1,6 +1,8 @@
 /* ============================================
-   STAFF.JS — Roles + chat + comprobante
-   + Evidencia de entrega con firma virtual
+   STAFF.JS — Roles: kitchen, cashier, delivery, admin
+   Flujo corregido:
+   - Cajero: ve recojo y estado de domicilio (sin firma)
+   - Repartidor: SOLO domicilio, con firma + foto
    ============================================ */
 (function() {
   let allOrders = [];
@@ -73,7 +75,7 @@
       `;
     } else if (staffRole === 'cashier') {
       pageTitle.textContent = 'Panel de Caja y Despacho';
-      pageSubtitle.textContent = 'Confirma pagos y entrega los pedidos de recojo.';
+      pageSubtitle.textContent = 'Cobra pedidos y entrega los de recojo.';
       roleBadge.textContent = 'CAJERO';
       roleBadge.style.background = '#3b82f6';
       roleBadge.style.color = '#fff';
@@ -83,7 +85,7 @@
       `;
     } else if (staffRole === 'delivery') {
       pageTitle.textContent = 'Panel de Repartidor';
-      pageSubtitle.textContent = 'Gestiona los pedidos para entrega a domicilio.';
+      pageSubtitle.textContent = 'Solo pedidos a domicilio.';
       roleBadge.textContent = 'REPARTIDOR';
       roleBadge.style.background = '#10b981';
       roleBadge.style.color = '#fff';
@@ -104,7 +106,7 @@
     }
   }
 
-  // --- VISIBILIDAD DE COLUMNAS ---
+  // --- VISIBILIDAD DE COLUMNAS SEGÚN ROL ---
   function applyRoleVisibility() {
     const cols = {
       pendientePago: document.getElementById('colPendientePago'),
@@ -118,30 +120,37 @@
       return;
     }
 
+    // CAJERO: ve pendientes de pago, confirmados (para efectivo) y listos (para recojo)
     if (staffRole === 'cashier') {
       if (cols.pendientePago) cols.pendientePago.style.display = 'block';
-      if (cols.confirmado) cols.confirmado.style.display = 'block';
+      if (cols.confirmado) {
+        cols.confirmado.style.display = 'block';
+        const titleC = document.getElementById('titleConfirmado');
+        if (titleC) titleC.textContent = '👨‍🍳 En Preparación';
+      }
       if (cols.listo) {
         cols.listo.style.display = 'block';
-        const title = cols.listo.querySelector('.kanban-title');
-        if (title) title.textContent = '🟢 Listos (Recojo)';
+        const titleL = cols.listo.querySelector('.kanban-title');
+        if (titleL) titleL.textContent = '🟢 Listos (Recojo)';
       }
-      const titleC = document.getElementById('titleConfirmado');
-      if (titleC) titleC.textContent = '👨‍🍳 En Preparación';
     }
 
+    // COCINA: ve confirmados y en preparación
     if (staffRole === 'kitchen') {
-      if (cols.confirmado) cols.confirmado.style.display = 'block';
+      if (cols.confirmado) {
+        cols.confirmado.style.display = 'block';
+        const titleC = document.getElementById('titleConfirmado');
+        if (titleC) titleC.textContent = '🔵 Nuevos Pedidos';
+      }
       if (cols.preparacion) cols.preparacion.style.display = 'block';
-      const titleC = document.getElementById('titleConfirmado');
-      if (titleC) titleC.textContent = '🔵 Nuevos Pedidos';
     }
 
+    // REPARTIDOR: ve listos (domicilio) y en camino
     if (staffRole === 'delivery') {
       if (cols.listo) {
         cols.listo.style.display = 'block';
-        const title = cols.listo.querySelector('.kanban-title');
-        if (title) title.textContent = '📦 Listos (Domicilio)';
+        const titleL = cols.listo.querySelector('.kanban-title');
+        if (titleL) titleL.textContent = '📦 Listos (Domicilio)';
       }
       if (cols.confirmado) {
         cols.confirmado.style.display = 'block';
@@ -154,10 +163,15 @@
   // --- CARGAR PEDIDOS ---
   async function loadOrders() {
     let statusFilter;
-    if (staffRole === 'admin') statusFilter = ['pendiente_pago', 'confirmado', 'en_preparacion', 'listo', 'en_camino'];
-    else if (staffRole === 'cashier') statusFilter = ['pendiente_pago', 'confirmado', 'listo'];
-    else if (staffRole === 'delivery') statusFilter = ['listo', 'en_camino'];
-    else statusFilter = ['confirmado', 'en_preparacion'];
+    if (staffRole === 'admin') {
+      statusFilter = ['pendiente_pago', 'confirmado', 'en_preparacion', 'listo', 'en_camino'];
+    } else if (staffRole === 'cashier') {
+      statusFilter = ['pendiente_pago', 'confirmado', 'listo', 'en_camino', 'entregado'];
+    } else if (staffRole === 'delivery') {
+      statusFilter = ['listo', 'en_camino'];
+    } else {
+      statusFilter = ['confirmado', 'en_preparacion'];
+    }
 
     const { data, error } = await window.supabase
       .rpc('get_orders_with_client_name', { p_statuses: statusFilter });
@@ -176,10 +190,28 @@
       allOrders = data || [];
     }
 
+    // FILTRO ESPECIAL POR ROL:
+    // - Repartidor: SOLO domicilio
+    // - Cajero: en listos SOLO recojo (domicilio se le muestra pero sin acciones)
+    if (staffRole === 'delivery') {
+      allOrders = allOrders.filter(o => o.delivery_type === 'domicilio');
+    }
+
+    // Cajero: quitar entregados con más de 10 minutos
+    if (staffRole === 'cashier') {
+      const now = new Date();
+      allOrders = allOrders.filter(o => {
+        if (o.status === 'entregado' && o.delivered_at) {
+          const deliveredAt = new Date(o.delivered_at);
+          const diffMin = (now - deliveredAt) / 1000 / 60;
+          return diffMin < 10; // Solo mostrar entregados hace menos de 10 min
+        }
+        return true;
+      });
+    }
+
     console.log('📋 Pedidos cargados:', allOrders.map(o => ({ 
-      id: o.id, 
-      status: o.status, 
-      receipt_url: o.receipt_url 
+      id: o.id, status: o.status, delivery_type: o.delivery_type, receipt_url: o.receipt_url 
     })));
 
     renderKanban();
@@ -201,6 +233,7 @@
     }
   }
 
+  // --- RENDER KANBAN ---
   function renderKanban() {
     const containers = {
       pendiente_pago: document.getElementById('col-pendiente_pago'),
@@ -213,7 +246,8 @@
     const groups = {
       pendiente_pago: allOrders.filter(o => o.status === 'pendiente_pago'),
       confirmado: allOrders.filter(o => 
-        o.status === 'confirmado' || (staffRole === 'delivery' && o.status === 'en_camino')
+        o.status === 'confirmado' || (staffRole === 'delivery' && o.status === 'en_camino') ||
+        (staffRole === 'cashier' && o.status === 'entregado')
       ),
       en_preparacion: allOrders.filter(o => o.status === 'en_preparacion'),
       listo: allOrders.filter(o => o.status === 'listo'),
@@ -239,6 +273,7 @@
     });
   }
 
+  // --- TARJETA DE PEDIDO ---
   function renderOrderCard(o) {
     const clientName = o.client_name || 'Cliente';
     const time = new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -254,13 +289,14 @@
       `;
     }
 
-    // Indicador de comprobante
     let receiptBadge = '';
     if (o.receipt_url) {
       receiptBadge = `<div style="font-size:0.75rem; color:#6ee7b7; margin-bottom:0.5rem;">📎 Comprobante adjunto</div>`;
     }
 
     let actionBtn = '';
+    
+    // ============ LÓGICA POR ESTADO Y ROL ============
     
     if (o.status === 'pendiente_pago') {
       if (staffRole === 'cashier' || staffRole === 'admin') {
@@ -286,12 +322,14 @@
     } 
     else if (o.status === 'listo') {
       if (o.delivery_type === 'recojo') {
+        // SOLO CAJERO puede entregar recojo (sin evidencia)
         if (staffRole === 'cashier' || staffRole === 'admin') {
-          actionBtn = `<button class="btn-sm-action btn-deliver" onclick="event.stopPropagation(); window.__openEvidence(${o.id})">📸 Entregar al Cliente</button>`;
+          actionBtn = `<button class="btn-sm-action btn-deliver" onclick="event.stopPropagation(); window.__deliverSimple(${o.id})">📦 Entregar al Cliente</button>`;
         } else {
           actionBtn = `<span style="font-size:0.8rem;color:#6ee7b7;">✅ Listo (esperando caja)</span>`;
         }
       } else {
+        // DOMICILIO: SOLO REPARTIDOR recoge
         if (staffRole === 'delivery' || staffRole === 'admin') {
           actionBtn = `
             <div style="display:flex; gap:0.5rem; width:100%;">
@@ -305,6 +343,7 @@
       }
     } 
     else if (o.status === 'en_camino') {
+      // SOLO REPARTIDOR puede confirmar entrega con evidencia
       if (staffRole === 'delivery' || staffRole === 'admin') {
         actionBtn = `
           <div style="display:flex; gap:0.5rem; width:100%;">
@@ -313,6 +352,10 @@
           </div>
         `;
       }
+    }
+    else if (o.status === 'entregado') {
+      // Solo cajero lo ve (temporalmente), sin acciones
+      actionBtn = `<span style="font-size:0.8rem;color:#cbd5e1;">✅ Entregado</span>`;
     }
 
     const borderClass = `order-card--${o.status}`;
@@ -334,6 +377,27 @@
     `;
   }
 
+  // --- ENTREGA SIMPLE (para cajero en recojo) ---
+  window.__deliverSimple = async (orderId) => {
+    if (!confirm(`¿Confirmar entrega del pedido #${orderId} al cliente?`)) return;
+
+    const { error } = await window.supabase
+      .from('orders')
+      .update({ 
+        status: 'entregado',
+        delivered_at: new Date().toISOString()
+      })
+      .eq('id', orderId);
+
+    if (error) {
+      alert('Error: ' + error.message);
+    } else {
+      alert(`✅ Pedido #${orderId} entregado.`);
+      await loadOrders();
+    }
+  };
+
+  // --- CAMBIAR ESTADO (para cocina y repartidor) ---
   window.__changeStatus = async (orderId, newStatus) => {
     const idx = allOrders.findIndex(o => o.id === orderId);
     if (idx !== -1) {
@@ -359,8 +423,6 @@
     if (error) {
       alert('Error: ' + error.message);
       await loadOrders();
-    } else if (newStatus === 'entregado') {
-      alert(`✅ Pedido #${orderId} entregado correctamente.`);
     } else if (newStatus === 'en_camino') {
       alert(`🛵 Pedido #${orderId} en camino.`);
     }
@@ -406,17 +468,13 @@
     }
   };
 
+  // --- VER DETALLE ---
   window.__viewOrderDetail = async (orderId) => {
     const modal = document.getElementById('orderDetailModal');
     if (!modal) return;
 
     const order = allOrders.find(o => o.id === orderId);
-    console.log('🔍 Cajero ve pedido:', {
-      id: order?.id,
-      status: order?.status,
-      payment_method: order?.payment_method,
-      receipt_url: order?.receipt_url
-    });
+    console.log('🔍 Ver pedido:', { id: order?.id, status: order?.status, receipt_url: order?.receipt_url });
 
     document.getElementById('detailOrderTitle').textContent = `Pedido #${orderId}`;
     document.getElementById('detailOrderInfo').innerHTML = '<p>Cargando...</p>';
@@ -436,11 +494,11 @@
         actionButtons = `
           <div style="display:flex; gap:0.75rem; margin-top:1rem;">
             <button onclick="window.__confirmPayment(${order.id}); document.getElementById('orderDetailModal').classList.remove('active');" 
-                    style="flex:1; padding:0.75rem; background:#10b981; color:#fff; border:none; border-radius:0.5rem; font-weight:700; cursor:pointer; font-size:0.95rem;">
+                    style="flex:1; padding:0.75rem; background:#10b981; color:#fff; border:none; border-radius:0.5rem; font-weight:700; cursor:pointer;">
               ✅ Confirmar Pago
             </button>
             <button onclick="window.__rejectReceipt(${order.id})" 
-                    style="flex:1; padding:0.75rem; background:#ef4444; color:#fff; border:none; border-radius:0.5rem; font-weight:700; cursor:pointer; font-size:0.95rem;">
+                    style="flex:1; padding:0.75rem; background:#ef4444; color:#fff; border:none; border-radius:0.5rem; font-weight:700; cursor:pointer;">
               ❌ Rechazar
             </button>
           </div>
@@ -458,7 +516,7 @@
       `;
     }
 
-    // Evidencia de entrega (si existe)
+    // Evidencia de entrega
     let evidenceHtml = '';
     try {
       const { data: evidence } = await window.supabase
@@ -505,12 +563,12 @@
       ${evidenceHtml}
     `;
 
-    const { data: items, error } = await window.supabase
+    const { data: items } = await window.supabase
       .from('order_items')
       .select(`*, products:product_id (name)`)
       .eq('order_id', orderId);
 
-    if (error || !items || items.length === 0) {
+    if (!items || items.length === 0) {
       document.getElementById('detailOrderItems').innerHTML = `<p>No hay items registrados.</p>`;
       return;
     }
@@ -538,7 +596,7 @@
   };
 
   window.__rejectReceipt = async (orderId) => {
-    if (!confirm('¿Rechazar este comprobante? El pedido volverá a "Pendiente de Pago" y el cliente deberá subir uno nuevo.')) return;
+    if (!confirm('¿Rechazar este comprobante? El cliente deberá subir uno nuevo.')) return;
 
     try {
       const { error } = await window.supabase
@@ -546,9 +604,8 @@
         .update({ status: 'pendiente_pago', receipt_url: null })
         .eq('id', orderId);
 
-      if (error) {
-        alert('Error al rechazar: ' + error.message);
-      } else {
+      if (error) alert('Error al rechazar: ' + error.message);
+      else {
         alert('❌ Comprobante rechazado.');
         document.getElementById('orderDetailModal').classList.remove('active');
         await loadOrders();
@@ -559,7 +616,7 @@
   };
 
   // ============================================
-  // EVIDENCIA DE ENTREGA
+  // EVIDENCIA DE ENTREGA (solo repartidor)
   // ============================================
   function initEvidenceModal() {
     const modal = document.getElementById('evidenceModal');
@@ -589,10 +646,7 @@
       const scaleY = canvas.height / rect.height;
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
       const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      return {
-        x: (clientX - rect.left) * scaleX,
-        y: (clientY - rect.top) * scaleY
-      };
+      return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
     };
 
     const startDrawing = (e) => {
@@ -602,7 +656,6 @@
       signatureCtx.beginPath();
       signatureCtx.moveTo(pos.x, pos.y);
     };
-
     const draw = (e) => {
       if (!isDrawing) return;
       e.preventDefault();
@@ -610,7 +663,6 @@
       signatureCtx.lineTo(pos.x, pos.y);
       signatureCtx.stroke();
     };
-
     const stopDrawing = () => { isDrawing = false; };
 
     canvas.addEventListener('mousedown', startDrawing);
@@ -642,9 +694,7 @@
       }
     });
 
-    btnCancel?.addEventListener('click', () => {
-      modal.classList.remove('active');
-    });
+    btnCancel?.addEventListener('click', () => modal.classList.remove('active'));
 
     form?.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -706,13 +756,8 @@
     const notes = document.getElementById('evidenceNotes').value.trim();
     const photoInput = document.getElementById('evidencePhoto');
 
-    if (!receiverName) {
-      return showEvidenceError('Ingresa el nombre de quien recibe.');
-    }
-
-    if (isCanvasEmpty()) {
-      return showEvidenceError('Se requiere la firma del receptor.');
-    }
+    if (!receiverName) return showEvidenceError('Ingresa el nombre de quien recibe.');
+    if (isCanvasEmpty()) return showEvidenceError('Se requiere la firma del receptor.');
 
     btn.disabled = true;
     btn.textContent = 'Guardando evidencia...';
@@ -745,10 +790,7 @@
 
       const { error: updateError } = await window.supabase
         .from('orders')
-        .update({ 
-          status: 'entregado',
-          delivered_at: new Date().toISOString()
-        })
+        .update({ status: 'entregado', delivered_at: new Date().toISOString() })
         .eq('id', orderId);
 
       if (updateError) throw updateError;
@@ -810,7 +852,7 @@
     if (chatSubscription) chatSubscription.unsubscribe();
     chatSubscription = window.supabase
       .channel(`chat-${orderId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'order_messages', filter: `order_id=eq.${orderId}` }, (payload) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'order_messages', filter: `order_id=eq.${orderId}` }, () => {
         loadChatMessages(orderId);
       })
       .subscribe();
@@ -826,13 +868,12 @@
       .order('created_at', { ascending: true });
 
     if (error) {
-      console.error('Error cargando mensajes:', error);
       container.innerHTML = `<p style="color: #fca5a5; text-align: center; font-size: 0.85rem;">Error al cargar mensajes.</p>`;
       return;
     }
 
     if (!messages || messages.length === 0) {
-      container.innerHTML = `<p style="color: var(--text-muted); text-align: center; font-size: 0.85rem;">No hay mensajes aún. Inicia la conversación.</p>`;
+      container.innerHTML = `<p style="color: var(--text-muted); text-align: center; font-size: 0.85rem;">No hay mensajes aún.</p>`;
       return;
     }
 
@@ -846,7 +887,7 @@
     (profiles || []).forEach(p => { profilesMap[p.id] = p; });
 
     container.innerHTML = messages.map(m => {
-      const sender = profilesMap[m.sender_id] || { full_name: 'Usuario', role: m.sender_role };
+      const sender = profilesMap[m.sender_id] || { full_name: 'Usuario' };
       return renderChatMessage({ ...m, sender_name: sender.full_name });
     }).join('');
     container.scrollTop = container.scrollHeight;
